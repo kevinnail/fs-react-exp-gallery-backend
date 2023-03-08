@@ -5,7 +5,5 @@ DROP TABLE IF EXISTS users_admin;
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   email VARCHAR,
-  password_hash VARCHAR NOT NULL,
-  first_name VARCHAR NOT NULL,
-  last_name VARCHAR NOT NULL
+  password_hash VARCHAR NOT NULL
 );
