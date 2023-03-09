@@ -6,8 +6,6 @@ const UserService = require('../lib/services/UserService');
 // const Post = require('../lib/models/Post.js');
 
 const mockUser = {
-  firstName: 'Test',
-  lastName: 'User',
   email: 'test@example.com',
   password: '12345',
 };
@@ -48,20 +46,28 @@ describe('admin gallery routes', () => {
   //     });
   //   });
 
-  //   it('POST /api/v1/admin', async () => {
-  //     const [agent] = await registerAndLogin();
-  //     const resp = await agent
-  //       .post('/api/v1/admin')
-  //       .send({ task: 'Test task', user_id: '1' });
-  //     expect(resp.status).toBe(200);
-  //     expect(resp.body).toEqual({
-  //       completed: false,
-  //       created_at: expect.any(String),
-  //       id: expect.any(String),
-  //       task: 'Test task',
-  //       user_id: '1',
-  //     });
-  //   });
+  it('POST /api/v1/admin', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'test title',
+      description: 'test description',
+      image_url: 'test image url',
+      category: 'test category',
+      price: 'test price',
+      author_id: 1,
+    });
+    expect(resp.status).toBe(200);
+    expect(resp.body).toEqual({
+      id: expect.any(String),
+      created_at: expect.any(String),
+      title: 'test title',
+      description: 'test description',
+      image_url: expect.any(String),
+      category: 'test category',
+      price: 'test price',
+      author_id: expect.any(String),
+    });
+  });
 
   //   it('PUT /api/v1/admin/:id', async () => {
   //     const [agent] = await registerAndLogin();
