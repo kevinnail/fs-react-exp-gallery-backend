@@ -93,7 +93,7 @@ describe('admin gallery routes', () => {
       created_at: expect.any(String),
       title: 'test title',
       description: 'test description',
-      image_url: expect.any(String),
+      image_url: 'test image url',
       category: 'test category',
       price: 'test price',
       author_id: expect.any(String),
