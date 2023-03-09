@@ -33,18 +33,49 @@ describe('admin gallery routes', () => {
     expect(resp.status).toBe(200);
   });
 
-  //   it('GET /api/v1/admin/:id', async () => {
-  //     const [agent] = await registerAndLogin();
-  //     const resp = await agent.get('/api/v1/admin/1');
-  //     expect(resp.status).toBe(200);
-  //     expect(resp.body).toEqual({
-  //       completed: false,
-  //       created_at: expect.any(String),
-  //       id: expect.any(String),
-  //       task: 'Mow lawn',
-  //       user_id: '1',
-  //     });
-  //   });
+  // it('GET/api/v1/admin/:id', async () => {
+  //   const [agent] = await registerAndLogin();
+  //   const resp = await agent.get('/api/v1/admin/1');
+  //   expect(resp.status).toBe(200);
+  // expect(resp.body).toEqual({
+  //   completed: false,
+  //   created_at: expect.any(String),
+  //   id: expect.any(String),
+  //   task: 'Mow lawn',
+  //   user_id: '1',
+  // });
+  // });
+  it('PUT /api/v1/admin/:id', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'test title',
+      description: 'test description',
+      image_url: 'test image url',
+      category: 'test category',
+      price: 'test price',
+      author_id: 1,
+    });
+    expect(resp.status).toBe(200);
+    const resp2 = await agent.post('/api/v1/admin').send({
+      author_id: 1,
+      title: 'Test title is updated',
+      description: 'test description is updated',
+      image_url: 'test image url is updated',
+      category: 'test category is updated',
+      price: 'test price is updated',
+    });
+    expect(resp2.status).toBe(200);
+    expect(resp2.body).toEqual({
+      id: expect.any(String),
+      created_at: expect.any(String),
+      title: 'Test title is updated',
+      description: 'test description is updated',
+      image_url: 'test image url is updated',
+      category: 'test category is updated',
+      price: 'test price is updated',
+      author_id: expect.any(String),
+    });
+  });
 
   it('POST /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
