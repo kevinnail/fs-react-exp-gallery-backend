@@ -21,9 +21,7 @@ CREATE TABLE gallery_posts (
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
-INSERT INTO users_admin (email, password_hash)
-VALUES 
-  ('test@example.com', '');
+
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id)
 VALUES 
