@@ -33,18 +33,22 @@ describe('admin gallery routes', () => {
     expect(resp.status).toBe(200);
   });
 
-  // it('GET/api/v1/admin/:id', async () => {
-  //   const [agent] = await registerAndLogin();
-  //   const resp = await agent.get('/api/v1/admin/1');
-  //   expect(resp.status).toBe(200);
-  // expect(resp.body).toEqual({
-  //   completed: false,
-  //   created_at: expect.any(String),
-  //   id: expect.any(String),
-  //   task: 'Mow lawn',
-  //   user_id: '1',
-  // });
-  // });
+  it('GET/api/v1/admin/:id', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.get('/api/v1/admin/1');
+    expect(resp.status).toBe(200);
+    expect(resp.body).toEqual({
+      id: expect.any(String),
+      created_at: expect.any(String),
+      title: expect.any(String),
+      description: expect.any(String),
+      image_url: expect.any(String),
+      category: expect.any(String),
+      price: expect.any(String),
+      author_id: expect.any(String),
+    });
+  });
+
   it('PUT /api/v1/admin/:id', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
