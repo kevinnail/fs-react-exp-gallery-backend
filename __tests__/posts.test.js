@@ -3,7 +3,7 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
-// const Post = require('../lib/models/Post.js');
+const Post = require('../lib/models/Post.js');
 
 const mockUser = {
   email: 'test@example.com',
@@ -118,15 +118,36 @@ describe('admin gallery routes', () => {
   //     expect(resp2.body.completed).toBe(false);
   //   });
 
-  //   it('DELETE /api/v1/admin/:id', async () => {
-  //     const [agent, user] = await registerAndLogin();
-  //     const task = 'Test task that needs to be deleted';
-  //     const todo = await Todo.postNewToDo(task, user.id);
-  //     const resp = await agent.delete(`/api/v1/admin/${todo.id}`);
-  //     expect(resp.status).toBe(200);
-  //     const deleteResp = await agent.get(`/api/v1/admin/${todo.id}`);
-  //     expect(deleteResp.status).toBe(403);
-  //   });
+  it('DELETE /api/v1/admin/:id should delete a post', async () => {
+    // First, create a new post using Post.postNewPost() method
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'test title',
+      description: 'test description',
+      image_url: 'test image url',
+      category: 'test category',
+      price: 'test price',
+      author_id: 1,
+    });
+    expect(resp.status).toBe(200);
+
+    // Get the ID of the newly created post
+    const postId = resp.body.id;
+
+    // Delete the post
+    const deleteResp = await agent.delete(`/api/v1/admin/${postId}`);
+    expect(deleteResp.status).toBe(200);
+
+    // Try to get the deleted post
+    const getResp = await agent.get(`/api/v1/posts/${postId}`);
+    expect(getResp.status).toBe(404);
+  });
+
+  //
+  //
+
+  //
+  //
 
   //   it('PUT /api/v1/admin/edit/:id', async () => {
   //     const [agent] = await registerAndLogin();
