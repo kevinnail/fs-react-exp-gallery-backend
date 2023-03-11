@@ -102,7 +102,6 @@ describe('admin gallery routes', () => {
       author_id: expect.any(String),
     });
   });
-
   //   it('PUT /api/v1/admin/:id', async () => {
   //     const [agent] = await registerAndLogin();
   //     const resp = await agent
@@ -116,7 +115,6 @@ describe('admin gallery routes', () => {
   //     expect(resp2.status).toBe(200);
   //     expect(resp2.body.completed).toBe(false);
   //   });
-
   it('DELETE /api/v1/admin/:id should delete a post', async () => {
     // First, create a new post using Post.postNewPost() method
     const [agent] = await registerAndLogin();
