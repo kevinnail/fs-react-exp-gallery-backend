@@ -21,6 +21,14 @@ CREATE TABLE gallery_posts (
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
+CREATE TABLE gallery_imgs (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER,
+  img_url VARCHAR(255),
+  public_id VARCHAR(255),
+  FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
+);
+
 
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id)
