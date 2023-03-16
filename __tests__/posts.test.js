@@ -3,6 +3,17 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
+const cloudinary = require('cloudinary').v2;
+const FormData = require('form-data');
+
+// Mock the cloudinary.uploader.upload function
+jest.mock('cloudinary', () => ({
+  v2: {
+    uploader: {
+      upload: jest.fn(),
+    },
+  },
+}));
 
 const mockUser = {
   email: 'test@example.com',
@@ -17,12 +28,27 @@ const registerAndLogin = async () => {
     .send({ email: mockUser.email, password: mockUser.password });
   return [agent, user];
 };
+
+jest.mock('cloudinary', () => ({
+  v2: {
+    uploader: {
+      upload: jest.fn(),
+    },
+    config: jest.fn(() => {}),
+  },
+}));
 describe('admin gallery routes', () => {
   beforeEach(() => {
+    cloudinary.config({
+      cloud_name: 'my_cloud_name',
+      api_key: 'my_api_key',
+      api_secret: 'my_api_secret',
+    });
     return setup(pool);
   });
 
   afterAll(() => {
+    jest.clearAllMocks();
     pool.end();
   });
 
@@ -141,21 +167,43 @@ describe('admin gallery routes', () => {
   });
 
   //
-  //
+  it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+    const fakeImage1 = Buffer.from('fake-image-content-1');
+    const fakeImage2 = Buffer.from('fake-image-content-2');
+    const [agent] = await registerAndLogin();
 
-  //
-  //
+    const formData = new FormData();
 
-  //   it('PUT /api/v1/admin/edit/:id', async () => {
-  //     const [agent] = await registerAndLogin();
-  //     const resp = await agent
-  //       .post('/api/v1/admin')
-  //       .send({ task: 'Test task', user_id: '1' });
-  //     expect(resp.status).toBe(200);
-  //     const resp2 = await agent
-  //       .post('/api/v1/admin')
-  //       .send({ task: 'Test task is updated', user_id: '1' });
-  //     expect(resp2.status).toBe(200);
-  //     expect(resp2.body.task).toBe('Test task is updated');
-  //   });
+    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
+    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
+
+    const response = await agent
+      .post('/api/v1/admin/upload')
+      .set(
+        'Content-Type',
+        `multipart/form-data; boundary=${formData.getBoundary()}`
+      )
+      .send(formData.getBuffer());
+    expect(response.statusCode).toBe(200);
+  });
+
+  // don't remove this one VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
+
+//
+
+//
+
+//   it('PUT /api/v1/admin/edit/:id', async () => {
+//     const [agent] = await registerAndLogin();
+//     const resp = await agent
+//       .post('/api/v1/admin')
+//       .send({ task: 'Test task', user_id: '1' });
+//     expect(resp.status).toBe(200);
+//     const resp2 = await agent
+//       .post('/api/v1/admin')
+//       .send({ task: 'Test task is updated', user_id: '1' });
+//     expect(resp2.status).toBe(200);
+//     expect(resp2.body.task).toBe('Test task is updated');
+//   });
+// });
