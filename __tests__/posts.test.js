@@ -187,6 +187,25 @@ describe('admin gallery routes', () => {
     expect(response.statusCode).toBe(200);
   });
 
+  it('POST /admin/images should store public_id and url in the database', async () => {
+    const [agent] = await registerAndLogin();
+    const id = '1';
+    const image_public_ids = '["test-public-id", "test-public-id-2"]';
+    const image_urls = '["test-url", "test-url-2"]';
+    const response = await agent
+      .post('/api/v1/admin/images')
+      .send({ id, image_urls, image_public_ids });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual([
+      {
+        id: expect.any(Number),
+      },
+      {
+        id: expect.any(Number),
+      },
+    ]);
+  });
   // don't remove this one VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
 
