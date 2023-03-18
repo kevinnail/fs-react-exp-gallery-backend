@@ -18,7 +18,8 @@ CREATE TABLE gallery_posts (
   image_url VARCHAR,
   category VARCHAR,
   price VARCHAR,
-  author_id BIGINT
+  author_id BIGINT,
+  public_id VARCHAR
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
