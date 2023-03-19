@@ -20,7 +20,7 @@ CREATE TABLE gallery_posts (
   price VARCHAR,
   author_id BIGINT,
   public_id VARCHAR,
-  add_imgs BOOLEAN DEFAULT FALSE
+ num_imgs BIGINT
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
