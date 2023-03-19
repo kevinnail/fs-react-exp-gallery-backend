@@ -19,7 +19,8 @@ CREATE TABLE gallery_posts (
   category VARCHAR,
   price VARCHAR,
   author_id BIGINT,
-  public_id VARCHAR
+  public_id VARCHAR,
+  add_imgs BOOLEAN DEFAULT FALSE
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
