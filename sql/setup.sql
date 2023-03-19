@@ -27,7 +27,7 @@ CREATE TABLE gallery_posts (
 CREATE TABLE gallery_imgs (
   id SERIAL PRIMARY KEY,
   post_id INTEGER,
-  img_url VARCHAR(255),
+  image_url VARCHAR(255),
   public_id VARCHAR(255),
   FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
 );
