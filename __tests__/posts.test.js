@@ -96,6 +96,8 @@ describe('admin gallery routes', () => {
       image_url: 'test image url is updated',
       category: 'test category is updated',
       price: 'test price is updated',
+      num_imgs: 1,
+      public_id: 'test public id',
     });
     expect(resp2.status).toBe(200);
     expect(resp2.body).toEqual({
@@ -107,6 +109,8 @@ describe('admin gallery routes', () => {
       category: 'test category is updated',
       price: 'test price is updated',
       author_id: expect.any(String),
+      num_imgs: expect.any(String),
+      public_id: expect.any(String),
     });
   });
 
