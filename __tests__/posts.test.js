@@ -212,9 +212,13 @@ describe('admin gallery routes', () => {
     expect(response.body).toEqual([
       {
         id: expect.any(Number),
+        image_url: expect.any(String),
+        public_id: expect.any(String),
       },
       {
         id: expect.any(Number),
+        image_url: expect.any(String),
+        public_id: expect.any(String),
       },
     ]);
   });
