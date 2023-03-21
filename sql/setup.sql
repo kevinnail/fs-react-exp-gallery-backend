@@ -34,8 +34,8 @@ CREATE TABLE gallery_imgs (
 
 
 
-INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id)
+INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
 VALUES 
-  (NOW(), 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 1),
-  (NOW(), 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 1),
-  (NOW(), 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 1);
+  (NOW(), 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 1, 'Test 1', 1),
+  (NOW(), 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 1, 'Test 2', 1),
+  (NOW(), 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 1,  'Test 3', 1);
