@@ -71,6 +71,8 @@ describe('admin gallery routes', () => {
       category: expect.any(String),
       price: expect.any(String),
       author_id: expect.any(String),
+      num_imgs: expect.any(String),
+      public_id: expect.any(String),
     });
   });
 
@@ -83,6 +85,8 @@ describe('admin gallery routes', () => {
       category: 'test category',
       price: 'test price',
       author_id: 1,
+      num_imgs: 1,
+      public_id: 'test public id',
     });
     expect(resp.status).toBe(200);
     const resp2 = await agent.post('/api/v1/admin').send({
@@ -92,6 +96,8 @@ describe('admin gallery routes', () => {
       image_url: 'test image url is updated',
       category: 'test category is updated',
       price: 'test price is updated',
+      num_imgs: 1,
+      public_id: 'test public id',
     });
     expect(resp2.status).toBe(200);
     expect(resp2.body).toEqual({
@@ -103,6 +109,8 @@ describe('admin gallery routes', () => {
       category: 'test category is updated',
       price: 'test price is updated',
       author_id: expect.any(String),
+      num_imgs: expect.any(String),
+      public_id: expect.any(String),
     });
   });
 
@@ -115,6 +123,8 @@ describe('admin gallery routes', () => {
       category: 'test category',
       price: 'test price',
       author_id: 1,
+      num_imgs: 1,
+      public_id: 'test public id',
     });
     expect(resp.status).toBe(200);
     expect(resp.body).toEqual({
@@ -126,6 +136,8 @@ describe('admin gallery routes', () => {
       category: 'test category',
       price: 'test price',
       author_id: expect.any(String),
+      num_imgs: expect.any(String),
+      public_id: expect.any(String),
     });
   });
   //   it('PUT /api/v1/admin/:id', async () => {
@@ -200,9 +212,13 @@ describe('admin gallery routes', () => {
     expect(response.body).toEqual([
       {
         id: expect.any(Number),
+        image_url: expect.any(String),
+        public_id: expect.any(String),
       },
       {
         id: expect.any(Number),
+        image_url: expect.any(String),
+        public_id: expect.any(String),
       },
     ]);
   });
