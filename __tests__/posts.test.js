@@ -123,6 +123,8 @@ describe('admin gallery routes', () => {
       category: 'test category',
       price: 'test price',
       author_id: 1,
+      num_imgs: 1,
+      public_id: 'test public id',
     });
     expect(resp.status).toBe(200);
     expect(resp.body).toEqual({
@@ -134,6 +136,8 @@ describe('admin gallery routes', () => {
       category: 'test category',
       price: 'test price',
       author_id: expect.any(String),
+      num_imgs: expect.any(String),
+      public_id: expect.any(String),
     });
   });
   //   it('PUT /api/v1/admin/:id', async () => {
