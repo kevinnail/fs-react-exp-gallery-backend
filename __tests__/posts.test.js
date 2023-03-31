@@ -222,23 +222,56 @@ describe('admin gallery routes', () => {
       },
     ]);
   });
-  // don't remove this one VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
+
+  it('DELETE /api/v1/admin/image/:id should delete an image from database', async () => {
+    const [agent] = await registerAndLogin();
+    const id = 1;
+    const image_public_ids = '["test-public-id", "test-public-id-2"]';
+    const image_urls = '["test-url", "test-url-2"]';
+    const response = await agent
+      .post('/api/v1/admin/images')
+      .send({ id, image_urls, image_public_ids });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "id": 1,
+          "image_url": "test-url",
+          "public_id": "test-public-id",
+        },
+        Object {
+          "id": 2,
+          "image_url": "test-url-2",
+          "public_id": "test-public-id-2",
+        },
+      ]
+    `);
+
+    const publicimgToDelete = response.body[0].public_id;
+    const deleteResp = await agent.delete(`/api/v1/admin/image/${id}`).send({
+      public_id: publicimgToDelete,
+    });
+    expect(deleteResp.body).toMatchInlineSnapshot(`
+      Object {
+        "id": 1,
+        "image_url": "test-url",
+        "public_id": "test-public-id",
+      }
+    `);
+
+    expect(deleteResp.status).toBe(200);
+    const remainingImage = await agent.get(`/api/v1/admin/urls/${id}`);
+    expect(remainingImage.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "id": 2,
+          "image_url": "test-url-2",
+          "post_id": 1,
+          "public_id": "test-public-id-2",
+        },
+      ]
+    `);
+    expect(remainingImage.status).toBe(200);
+  });
+  // don't remove this one: '});'   VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
-
-//
-
-//
-
-//   it('PUT /api/v1/admin/edit/:id', async () => {
-//     const [agent] = await registerAndLogin();
-//     const resp = await agent
-//       .post('/api/v1/admin')
-//       .send({ task: 'Test task', user_id: '1' });
-//     expect(resp.status).toBe(200);
-//     const resp2 = await agent
-//       .post('/api/v1/admin')
-//       .send({ task: 'Test task is updated', user_id: '1' });
-//     expect(resp2.status).toBe(200);
-//     expect(resp2.body.task).toBe('Test task is updated');
-//   });
-// });
