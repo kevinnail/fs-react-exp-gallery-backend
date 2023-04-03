@@ -273,5 +273,51 @@ describe('admin gallery routes', () => {
     `);
     expect(remainingImage.status).toBe(200);
   });
+
+  it('GET /api/v1/main-gallery should return all posts', async () => {
+    const data = await request(app).get('/api/v1/main-gallery');
+    expect(data.status).toBe(200);
+    expect(data.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "author_id": "1",
+          "category": "Test 1",
+          "created_at": "2023-04-03T19:53:20.486Z",
+          "description": "Test 1",
+          "id": "1",
+          "image_url": "Test 1",
+          "num_imgs": "1",
+          "price": "Test 1",
+          "public_id": "Test 1",
+          "title": "Test 1",
+        },
+        Object {
+          "author_id": "1",
+          "category": "Test 2",
+          "created_at": "2023-04-03T19:53:20.486Z",
+          "description": "Test 2",
+          "id": "2",
+          "image_url": "Test 2",
+          "num_imgs": "1",
+          "price": "Test 2",
+          "public_id": "Test 2",
+          "title": "Test 2",
+        },
+        Object {
+          "author_id": "1",
+          "category": "Test 3",
+          "created_at": "2023-04-03T19:53:20.486Z",
+          "description": "Test 3",
+          "id": "3",
+          "image_url": "Test 3",
+          "num_imgs": "1",
+          "price": "Test 3",
+          "public_id": "Test 3",
+          "title": "Test 3",
+        },
+      ]
+    `);
+  });
+
   // don't remove this one: '});'   VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
