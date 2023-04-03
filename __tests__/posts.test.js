@@ -282,7 +282,7 @@ describe('admin gallery routes', () => {
         Object {
           "author_id": "1",
           "category": "Test 1",
-          "created_at": "2023-04-03T19:53:20.486Z",
+          "created_at": "2023-04-03T22:09:07.307Z",
           "description": "Test 1",
           "id": "1",
           "image_url": "Test 1",
@@ -294,7 +294,7 @@ describe('admin gallery routes', () => {
         Object {
           "author_id": "1",
           "category": "Test 2",
-          "created_at": "2023-04-03T19:53:20.486Z",
+          "created_at": "2023-04-03T22:09:07.307Z",
           "description": "Test 2",
           "id": "2",
           "image_url": "Test 2",
@@ -306,7 +306,7 @@ describe('admin gallery routes', () => {
         Object {
           "author_id": "1",
           "category": "Test 3",
-          "created_at": "2023-04-03T19:53:20.486Z",
+          "created_at": "2023-04-03T22:09:07.307Z",
           "description": "Test 3",
           "id": "3",
           "image_url": "Test 3",
@@ -316,6 +316,25 @@ describe('admin gallery routes', () => {
           "title": "Test 3",
         },
       ]
+    `);
+  });
+
+  it('GET /api/v1/main-gallery/:id should return a single post', async () => {
+    const data = await request(app).get('/api/v1/main-gallery/1');
+    expect(data.status).toBe(200);
+    expect(data.body).toMatchInlineSnapshot(`
+      Object {
+        "author_id": "1",
+        "category": "Test 1",
+        "created_at": "2023-04-03T22:09:07.366Z",
+        "description": "Test 1",
+        "id": "1",
+        "image_url": "Test 1",
+        "num_imgs": "1",
+        "price": "Test 1",
+        "public_id": "Test 1",
+        "title": "Test 1",
+      }
     `);
   });
 
