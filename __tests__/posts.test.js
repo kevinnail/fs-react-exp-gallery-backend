@@ -282,7 +282,7 @@ describe('admin gallery routes', () => {
         Object {
           "author_id": "1",
           "category": "Test 1",
-          "created_at": "2023-04-03T22:09:07.307Z",
+          "created_at": "2023-04-04T00:58:18.889Z",
           "description": "Test 1",
           "id": "1",
           "image_url": "Test 1",
@@ -294,7 +294,7 @@ describe('admin gallery routes', () => {
         Object {
           "author_id": "1",
           "category": "Test 2",
-          "created_at": "2023-04-03T22:09:07.307Z",
+          "created_at": "2023-04-04T00:58:18.889Z",
           "description": "Test 2",
           "id": "2",
           "image_url": "Test 2",
@@ -306,7 +306,7 @@ describe('admin gallery routes', () => {
         Object {
           "author_id": "1",
           "category": "Test 3",
-          "created_at": "2023-04-03T22:09:07.307Z",
+          "created_at": "2023-04-04T00:58:18.889Z",
           "description": "Test 3",
           "id": "3",
           "image_url": "Test 3",
@@ -326,7 +326,7 @@ describe('admin gallery routes', () => {
       Object {
         "author_id": "1",
         "category": "Test 1",
-        "created_at": "2023-04-03T22:09:07.366Z",
+        "created_at": "2023-04-04T00:58:18.958Z",
         "description": "Test 1",
         "id": "1",
         "image_url": "Test 1",
@@ -335,6 +335,30 @@ describe('admin gallery routes', () => {
         "public_id": "Test 1",
         "title": "Test 1",
       }
+    `);
+  });
+
+  it.only('GET /api/v1/main-gallery/urls/:id should return all urls for a post', async () => {
+    const data = await request(app).get('/api/v1/main-gallery/urls/1');
+    expect(data.status).toBe(200);
+    expect(data.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "id": 1,
+          "image_url": "image_url.com",
+          "public_id": "public_id_1",
+        },
+        Object {
+          "id": 2,
+          "image_url": "image_url.com2",
+          "public_id": "public_id_2",
+        },
+        Object {
+          "id": 3,
+          "image_url": "image_url.com3",
+          "public_id": "public_id_3",
+        },
+      ]
     `);
   });
 
