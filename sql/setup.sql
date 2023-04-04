@@ -39,3 +39,9 @@ VALUES
   (NOW(), 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 1, 'Test 1', 1),
   (NOW(), 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 1, 'Test 2', 1),
   (NOW(), 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 1,  'Test 3', 1);
+
+INSERT INTO gallery_imgs (post_id, image_url, public_id)
+VALUES 
+  (1, 'image_url.com', 'public_id_1'),
+  (1, 'image_url.com2', 'public_id_2'),
+  (1, 'image_url.com3', 'public_id_3');
