@@ -222,23 +222,145 @@ describe('admin gallery routes', () => {
       },
     ]);
   });
-  // don't remove this one VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
+
+  it('DELETE /api/v1/admin/image/:id should delete an image from database', async () => {
+    const [agent] = await registerAndLogin();
+    const id = 1;
+    const image_public_ids = '["test-public-id", "test-public-id-2"]';
+    const image_urls = '["test-url", "test-url-2"]';
+    const response = await agent
+      .post('/api/v1/admin/images')
+      .send({ id, image_urls, image_public_ids });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "id": 4,
+          "image_url": "test-url",
+          "public_id": "test-public-id",
+        },
+        Object {
+          "id": 5,
+          "image_url": "test-url-2",
+          "public_id": "test-public-id-2",
+        },
+      ]
+    `);
+
+    const publicimgToDelete = response.body[0].public_id;
+    const deleteResp = await agent.delete(`/api/v1/admin/image/${id}`).send({
+      public_id: publicimgToDelete,
+    });
+    expect(deleteResp.body).toMatchInlineSnapshot(`
+      Object {
+        "id": 4,
+        "image_url": "test-url",
+        "public_id": "test-public-id",
+      }
+    `);
+
+    expect(deleteResp.status).toBe(200);
+    const remainingImage = await agent.get(`/api/v1/admin/urls/${id}`);
+    expect(remainingImage.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "id": 1,
+          "image_url": "image_url.com",
+          "post_id": 1,
+          "public_id": "public_id_1",
+        },
+        Object {
+          "id": 2,
+          "image_url": "image_url.com2",
+          "post_id": 1,
+          "public_id": "public_id_2",
+        },
+        Object {
+          "id": 3,
+          "image_url": "image_url.com3",
+          "post_id": 1,
+          "public_id": "public_id_3",
+        },
+        Object {
+          "id": 5,
+          "image_url": "test-url-2",
+          "post_id": 1,
+          "public_id": "test-public-id-2",
+        },
+      ]
+    `);
+    expect(remainingImage.status).toBe(200);
+  });
+
+  it('GET /api/v1/main-gallery should return all posts', async () => {
+    const data = await request(app).get('/api/v1/main-gallery');
+    expect(data.status).toBe(200);
+    expect(data.body).toEqual([
+      {
+        author_id: '1',
+        category: 'Test 1',
+        created_at: expect.any(String),
+        description: 'Test 1',
+        id: '1',
+        image_url: 'Test 1',
+        num_imgs: '1',
+        price: 'Test 1',
+        public_id: 'Test 1',
+        title: 'Test 1',
+      },
+      {
+        author_id: '1',
+        category: 'Test 2',
+        created_at: expect.any(String),
+        description: 'Test 2',
+        id: '2',
+        image_url: 'Test 2',
+        num_imgs: '1',
+        price: 'Test 2',
+        public_id: 'Test 2',
+        title: 'Test 2',
+      },
+      {
+        author_id: '1',
+        category: 'Test 3',
+        created_at: expect.any(String),
+        description: 'Test 3',
+        id: '3',
+        image_url: 'Test 3',
+        num_imgs: '1',
+        price: 'Test 3',
+        public_id: 'Test 3',
+        title: 'Test 3',
+      },
+    ]);
+  });
+
+  it('GET /api/v1/main-gallery/:id should return a single post', async () => {
+    const data = await request(app).get('/api/v1/main-gallery/1');
+    expect(data.status).toBe(200);
+    expect(data.body).toEqual({
+      author_id: '1',
+      category: 'Test 1',
+      created_at: expect.any(String),
+      description: 'Test 1',
+      id: '1',
+      image_url: 'Test 1',
+      num_imgs: '1',
+      price: 'Test 1',
+      public_id: 'Test 1',
+      title: 'Test 1',
+    });
+  });
+
+  it('GET /api/v1/main-gallery/urls/:id should return all urls for a post', async () => {
+    const data = await request(app).get('/api/v1/main-gallery/urls/1');
+    expect(data.status).toBe(200);
+    expect(data.body).toEqual([
+      { id: 1, image_url: 'image_url.com', public_id: 'public_id_1' },
+      { id: 2, image_url: 'image_url.com2', public_id: 'public_id_2' },
+      { id: 3, image_url: 'image_url.com3', public_id: 'public_id_3' },
+    ]);
+  });
+
+  // don't remove this one: '});'   VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
-
-//
-
-//
-
-//   it('PUT /api/v1/admin/edit/:id', async () => {
-//     const [agent] = await registerAndLogin();
-//     const resp = await agent
-//       .post('/api/v1/admin')
-//       .send({ task: 'Test task', user_id: '1' });
-//     expect(resp.status).toBe(200);
-//     const resp2 = await agent
-//       .post('/api/v1/admin')
-//       .send({ task: 'Test task is updated', user_id: '1' });
-//     expect(resp2.status).toBe(200);
-//     expect(resp2.body.task).toBe('Test task is updated');
-//   });
-// });
