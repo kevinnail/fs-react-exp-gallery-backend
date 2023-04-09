@@ -4,7 +4,6 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 
-// Dummy user for testing
 const mockUser = {
   firstName: 'Test',
   lastName: 'User',
@@ -39,7 +38,6 @@ describe('user routes', () => {
   it('creates a new user', async () => {
     const res = await request(app).post('/api/v1/users').send(mockUser);
     const { email } = mockUser;
-
     expect(res.body).toEqual({
       id: expect.any(String),
       email,
@@ -85,7 +83,6 @@ describe('user routes', () => {
     await agent
       .post('/api/v1/users/sessions')
       .send({ email: 'admin', password: '1234' });
-
     // const [agent] = await registerAndLogin({ email: 'admin' });
     const res = await agent.get('/api/v1/users/');
     expect(res.status).toEqual(200);

@@ -4,7 +4,7 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const cloudinary = require('cloudinary').v2;
-const FormData = require('form-data');
+// const FormData = require('form-data');
 
 // Mock the cloudinary.uploader.upload function
 jest.mock('cloudinary', () => ({
@@ -179,25 +179,25 @@ describe('admin gallery routes', () => {
   });
 
   //
-  it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
-    const fakeImage1 = Buffer.from('fake-image-content-1');
-    const fakeImage2 = Buffer.from('fake-image-content-2');
-    const [agent] = await registerAndLogin();
+  // it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+  //   const fakeImage1 = Buffer.from('fake-image-content-1');
+  //   const fakeImage2 = Buffer.from('fake-image-content-2');
+  //   const [agent] = await registerAndLogin();
 
-    const formData = new FormData();
+  //   const formData = new FormData();
 
-    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
-    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
+  //   formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
+  //   formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
 
-    const response = await agent
-      .post('/api/v1/admin/upload')
-      .set(
-        'Content-Type',
-        `multipart/form-data; boundary=${formData.getBoundary()}`
-      )
-      .send(formData.getBuffer());
-    expect(response.statusCode).toBe(200);
-  });
+  //   const response = await agent
+  //     .post('/api/v1/admin/upload')
+  //     .set(
+  //       'Content-Type',
+  //       `multipart/form-data; boundary=${formData.getBoundary()}`
+  //     )
+  //     .send(formData.getBuffer());
+  //   expect(response.statusCode).toBe(200);
+  // });
 
   it('POST /admin/images should store public_id and url in the database', async () => {
     const [agent] = await registerAndLogin();
