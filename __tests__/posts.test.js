@@ -4,7 +4,7 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const cloudinary = require('cloudinary').v2;
-const FormData = require('form-data');
+// const FormData = require('form-data');
 
 // Mock the cloudinary.uploader.upload function
 jest.mock('cloudinary', () => ({
