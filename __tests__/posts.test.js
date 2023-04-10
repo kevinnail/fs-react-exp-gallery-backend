@@ -4,16 +4,70 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const cloudinary = require('cloudinary').v2;
-// const FormData = require('form-data');
+const FormData = require('form-data');
 
+// Replace the upload middleware with the mockMulter
+jest.mock('multer', () => {
+  const mockMulter = {
+    array: jest.fn((fieldName) => (req, res, next) => {
+      // Add req.files with fake data when mocking the multer middleware
+      req.files = [
+        {
+          fieldname: fieldName,
+          originalname: 'test-image-1.jpg',
+          filename: 'test-image-1.jpg',
+          path: 'https://res.cloudinary.com/path/to/test-image-1.jpg',
+        },
+        {
+          fieldname: fieldName,
+          originalname: 'test-image-2.jpg',
+          filename: 'test-image-2.jpg',
+          path: 'https://res.cloudinary.com/path/to/test-image-2.jpg',
+        },
+      ];
+      next();
+    }),
+    none: jest.fn(() => (req, res, next) => next()),
+  };
+
+  return jest.fn().mockImplementation(() => mockMulter);
+});
+
+// working code for using local storage method vvvvvvvv
 // Mock the cloudinary.uploader.upload function
-jest.mock('cloudinary', () => ({
-  v2: {
-    uploader: {
-      upload: jest.fn(),
-    },
-  },
-}));
+// jest.mock('cloudinary', () => ({
+//   v2: {
+//     uploader: {
+//       upload: jest.fn(),
+//       upload_stream: jest.fn(),
+//     },
+//   },
+// }));
+// working code for using local storage method ^^^^^^^^
+
+// jest.mock('multer', () => {
+//   return function () {
+//     return mockMulter;
+//   };
+// });
+
+// Mock the CloudinaryStorage class
+jest.mock('multer-storage-cloudinary', () => {
+  return {
+    CloudinaryStorage: jest.fn().mockImplementation(() => {
+      return {
+        _handle: (req, file, cb) => {
+          cb(null, {
+            public_id: 'test-public-id',
+            secure_url: 'https://test-cloudinary-url.com',
+          });
+        },
+      };
+    }),
+  };
+});
+
+// new ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 const mockUser = {
   email: 'test@example.com',
@@ -29,14 +83,14 @@ const registerAndLogin = async () => {
   return [agent, user];
 };
 
-jest.mock('cloudinary', () => ({
-  v2: {
-    uploader: {
-      upload: jest.fn(),
-    },
-    config: jest.fn(() => {}),
-  },
-}));
+// jest.mock('cloudinary', () => ({
+//   v2: {
+//     uploader: {
+//       upload: jest.fn(),
+//     },
+//     config: jest.fn(() => {}),
+//   },
+// }));
 describe('admin gallery routes', () => {
   beforeEach(() => {
     cloudinary.config({
@@ -178,7 +232,7 @@ describe('admin gallery routes', () => {
     expect(getResp.status).toBe(404);
   });
 
-  //
+  //  upload image test //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
   //   const fakeImage1 = Buffer.from('fake-image-content-1');
   //   const fakeImage2 = Buffer.from('fake-image-content-2');
@@ -196,8 +250,60 @@ describe('admin gallery routes', () => {
   //       `multipart/form-data; boundary=${formData.getBoundary()}`
   //     )
   //     .send(formData.getBuffer());
+  //   console.log('response', response.body);
   //   expect(response.statusCode).toBe(200);
   // });
+
+  // old test works with local storage ^^^^^^^^^^^^^^^^^^^
+  // Test setup
+  const mockMulter = {
+    array: jest.fn(),
+  };
+
+  jest.mock('multer', () => {
+    return jest.fn().mockImplementation(() => mockMulter);
+  });
+
+  // ... your other mocks, imports, and test cases ...
+
+  // Test case
+  it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+    const fakeImage1 = Buffer.from('fake-image-content-1');
+    const fakeImage2 = Buffer.from('fake-image-content-2');
+    const [agent] = await registerAndLogin();
+
+    const formData = new FormData();
+
+    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
+    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
+
+    mockMulter.array.mockImplementation((fieldName) => (req, res, next) => {
+      req.files = [
+        {
+          fieldname: fieldName,
+          originalname: 'test-image-1.jpg',
+          filename: 'public_id_1',
+          path: 'secure_url_1',
+        },
+        {
+          fieldname: fieldName,
+          originalname: 'test-image-2.jpg',
+          filename: 'public_id_2',
+          path: 'secure_url_2',
+        },
+      ];
+      next();
+    });
+
+    const response = await agent
+      .post('/api/v1/admin/upload')
+      .set(
+        'Content-Type',
+        `multipart/form-data; boundary=${formData.getBoundary()}`
+      )
+      .send(formData.getBuffer());
+    expect(response.statusCode).toBe(200);
+  });
 
   it('POST /admin/images should store public_id and url in the database', async () => {
     const [agent] = await registerAndLogin();
