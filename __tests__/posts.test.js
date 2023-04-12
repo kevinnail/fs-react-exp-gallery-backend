@@ -468,5 +468,22 @@ describe('admin gallery routes', () => {
     ]);
   });
 
+  it('should return matching gallery posts', async () => {
+    const searchTerm = 'Test 1'; // Replace with a term you expect to find in your test data
+    // api/v1/main-gallery/search/${searchTerm}`
+    const response = await request(app)
+      .get(`/api/v1/main-gallery/search/${searchTerm}`)
+      .expect(200);
+
+    // Check if the response contains the expected posts
+    expect(response.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: expect.stringContaining(searchTerm),
+        }),
+      ])
+    );
+  });
+
   // don't remove this one: '});'   VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
