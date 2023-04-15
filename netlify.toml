@@ -3,4 +3,3 @@
 [functions]
   directory = ".netlify/functions"
   included_files = ["README.md"]
-[[redirects]]
