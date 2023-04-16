@@ -9,8 +9,8 @@ jobs:
       postgres:
         image: postgres
         env:
-          POSTGRES_USER: alchemy
-          POSTGRES_PASSWORD: alchemy
+          POSTGRES_USER: knail
+          POSTGRES_PASSWORD: knail
     steps:
       - uses: actions/checkout@v2
       - run: npm ci --dev
@@ -18,7 +18,7 @@ jobs:
       - run: npm test
         env:
           CI: true
-          DATABASE_URL: postgres://alchemy:alchemy@postgres:5432/alchemy
+          DATABASE_URL: postgres://knail:knail@postgres:5432/knail
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           SALT_ROUNDS: ${{ secrets.SALT_ROUNDS }}
           COOKIE_NAME: ${{ secrets.COOKIE_NAME }}
