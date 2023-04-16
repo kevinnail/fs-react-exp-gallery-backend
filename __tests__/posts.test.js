@@ -108,6 +108,7 @@ describe('admin gallery routes', () => {
 
   it('GET /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
+
     const resp = await agent.get('/api/v1/admin');
     expect(resp.status).toBe(200);
   });

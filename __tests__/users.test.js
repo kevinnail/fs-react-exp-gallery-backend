@@ -12,14 +12,15 @@ const mockUser = {
 };
 
 const registerAndLogin = async (userProps = {}) => {
-  const password = userProps.password ?? mockUser.password;
+  const userToUse = { ...mockUser, ...userProps };
+  const password = userToUse.password;
 
   // Create an "agent" that gives us the ability
   // to store cookies between requests in a test
   const agent = request.agent(app);
 
   // Create a user to sign in with
-  const user = await UserService.create({ ...mockUser, ...userProps });
+  const user = await UserService.create(userToUse);
 
   // ...then sign in
   const { email } = user;
@@ -60,11 +61,14 @@ describe('user routes', () => {
   it('/protected should return the current user if authenticated', async () => {
     const [agent] = await registerAndLogin();
     const res = await agent.get('/api/v1/users/protected');
+    // console.log('res.body', res.body);
+
     expect(res.status).toEqual(200);
   });
 
-  it('/users should return 401 if user not admin', async () => {
-    const [agent] = await registerAndLogin();
+  it('/users should return 403 if user not admin', async () => {
+    const nonAdminUser = { email: 'nonadmin@example.com' };
+    const [agent] = await registerAndLogin(nonAdminUser);
     const res = await agent.get('/api/v1/users/');
     expect(res.status).toEqual(403);
   });
