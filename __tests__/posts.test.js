@@ -17,12 +17,14 @@ jest.mock('multer', () => {
           originalname: 'test-image-1.jpg',
           filename: 'test-image-1.jpg',
           path: 'https://res.cloudinary.com/path/to/test-image-1.jpg',
+          mimetype: 'image/jpeg',
         },
         {
           fieldname: fieldName,
           originalname: 'test-image-2.jpg',
           filename: 'test-image-2.jpg',
           path: 'https://res.cloudinary.com/path/to/test-image-2.jpg',
+          mimetype: 'image/jpeg',
         },
       ];
       next();
@@ -275,25 +277,11 @@ describe('admin gallery routes', () => {
 
     const formData = new FormData();
 
-    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
-    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
-
-    mockMulter.array.mockImplementation((fieldName) => (req, res, next) => {
-      req.files = [
-        {
-          fieldname: fieldName,
-          originalname: 'test-image-1.jpg',
-          filename: 'public_id_1',
-          path: 'secure_url_1',
-        },
-        {
-          fieldname: fieldName,
-          originalname: 'test-image-2.jpg',
-          filename: 'public_id_2',
-          path: 'secure_url_2',
-        },
-      ];
-      next();
+    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg', {
+      type: 'image/jpeg',
+    });
+    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg', {
+      type: 'image/jpeg',
     });
 
     const response = await agent
