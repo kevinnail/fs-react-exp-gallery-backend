@@ -29,6 +29,7 @@ CREATE TABLE gallery_imgs (
   post_id INTEGER,
   image_url VARCHAR(255),
   public_id VARCHAR(255),
+  resource_type VARCHAR(255),
   FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
 );
 
@@ -40,8 +41,8 @@ VALUES
   (NOW(), 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 1, 'Test 2', 1),
   (NOW(), 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 1,  'Test 3', 1);
 
-INSERT INTO gallery_imgs (post_id, image_url, public_id)
+INSERT INTO gallery_imgs (post_id, image_url, public_id, resource_type)
 VALUES 
-  (1, 'image_url.com', 'public_id_1'),
-  (1, 'image_url.com2', 'public_id_2'),
-  (1, 'image_url.com3', 'public_id_3');
+  (1, 'image_url.com', 'public_id_1', 'image'),
+  (1, 'image_url.com2', 'public_id_2', 'image'),
+  (1, 'image_url.com3', 'public_id_3', 'image' );
