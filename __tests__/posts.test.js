@@ -294,7 +294,7 @@ describe('admin gallery routes', () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it.only('POST /admin/images should store public_id and url in the database', async () => {
+  it('POST /admin/images should store public_id and url in the database', async () => {
     const [agent] = await registerAndLogin();
     const id = '1';
     const image_public_ids = '["test-public-id", "test-public-id-2"]';
@@ -327,9 +327,10 @@ describe('admin gallery routes', () => {
     const id = 1;
     const image_public_ids = '["test-public-id", "test-public-id-2"]';
     const image_urls = '["test-url", "test-url-2"]';
+    const resource_types = '["image", "image"]';
     const response = await agent
       .post('/api/v1/admin/images')
-      .send({ id, image_urls, image_public_ids });
+      .send({ id, image_urls, image_public_ids, resource_types });
     expect(response.statusCode).toBe(200);
     expect(response.body).toMatchInlineSnapshot(`
       Array [
@@ -337,11 +338,13 @@ describe('admin gallery routes', () => {
           "id": 4,
           "image_url": "test-url",
           "public_id": "test-public-id",
+          "resource_type": "image",
         },
         Object {
           "id": 5,
           "image_url": "test-url-2",
           "public_id": "test-public-id-2",
+          "resource_type": "image",
         },
       ]
     `);
@@ -355,6 +358,7 @@ describe('admin gallery routes', () => {
         "id": 4,
         "image_url": "test-url",
         "public_id": "test-public-id",
+        "resource_type": "image",
       }
     `);
 
@@ -367,24 +371,28 @@ describe('admin gallery routes', () => {
           "image_url": "image_url.com",
           "post_id": 1,
           "public_id": "public_id_1",
+          "resource_type": "image",
         },
         Object {
           "id": 2,
           "image_url": "image_url.com2",
           "post_id": 1,
           "public_id": "public_id_2",
+          "resource_type": "image",
         },
         Object {
           "id": 3,
           "image_url": "image_url.com3",
           "post_id": 1,
           "public_id": "public_id_3",
+          "resource_type": "image",
         },
         Object {
           "id": 5,
           "image_url": "test-url-2",
           "post_id": 1,
           "public_id": "test-public-id-2",
+          "resource_type": "image",
         },
       ]
     `);
