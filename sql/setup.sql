@@ -3,6 +3,7 @@
 DROP TABLE IF EXISTS users_admin CASCADE;
 DROP TABLE IF EXISTS gallery_posts CASCADE;
 DROP TABLE IF EXISTS gallery_imgs CASCADE;
+DROP TABLE IF EXISTS creators CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -33,7 +34,13 @@ CREATE TABLE gallery_imgs (
   FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
 );
 
-
+CREATE TABLE creators (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  artist_name VARCHAR NOT NULL,
+  first_name VARCHAR NOT NULL,
+  last_name VARCHAR NOT NULL,
+  email VARCHAR NOT NULL
+);
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
 VALUES 
