@@ -53,3 +53,9 @@ VALUES
   (1, 'image_url.com', 'public_id_1', 'image'),
   (1, 'image_url.com2', 'public_id_2', 'image'),
   (1, 'image_url.com3', 'public_id_3', 'image' );
+
+INSERT INTO creators (artist_name, first_name, last_name, email)
+
+VALUES
+('Brutus', 'Jeff', 'Stevens', 'Brutus@gmail.com'),
+('Highly Educated', 'Bob', 'Ross', 'Highlyeducated@gmail.com');
