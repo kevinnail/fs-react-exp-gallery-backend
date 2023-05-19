@@ -36,7 +36,24 @@ describe('creators routes', () => {
 
   it('GET /api/v1/creators should return a list of creators', async () => {
     const resp = await request(app).get('/api/v1/creators');
-    expect(resp.status).toEqual(200);
-
-  })
+    expect(resp.status).toBe(200);
+    expect(resp.body).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "artist_name": "Brutus",
+          "email": "Brutus@gmail.com",
+          "first_name": "Jeff",
+          "id": "1",
+          "last_name": "Stevens",
+        },
+        Object {
+          "artist_name": "Highly Educated",
+          "email": "Highlyeducated@gmail.com",
+          "first_name": "Bob",
+          "id": "2",
+          "last_name": "Ross",
+        },
+      ]
+    `);
+  });
 });
