@@ -11,6 +11,15 @@ CREATE TABLE users_admin (
   password_hash VARCHAR NOT NULL
 );
 
+CREATE TABLE creators (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  artist_name VARCHAR NOT NULL,
+  first_name VARCHAR NOT NULL,
+  last_name VARCHAR NOT NULL,
+  email VARCHAR NOT NULL,
+  bio VARCHAR NOT NULL
+);
+
 CREATE TABLE gallery_posts (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -19,10 +28,10 @@ CREATE TABLE gallery_posts (
   image_url VARCHAR,
   category VARCHAR,
   price VARCHAR,
-  author_id BIGINT,
+  creator_id BIGINT,
   public_id VARCHAR,
- num_imgs BIGINT
-  -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
+  num_imgs BIGINT,
+  FOREIGN KEY (creator_id) REFERENCES creators(id)
 );
 
 CREATE TABLE gallery_imgs (
@@ -34,19 +43,20 @@ CREATE TABLE gallery_imgs (
   FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
 );
 
-CREATE TABLE creators (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  artist_name VARCHAR NOT NULL,
-  first_name VARCHAR NOT NULL,
-  last_name VARCHAR NOT NULL,
-  email VARCHAR NOT NULL
-);
+-- CREATE TABLE creators_posts (
+--   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+--   post_id BIGINT,
+--   creator_id BIGINT,
+--   FOREIGN KEY (post_id) REFERENCES creators(id),
+--   FOREIGN KEY (creator_id) REFERENCES creators(id)
+-- )
 
-INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
+
+INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, public_id, num_imgs)
 VALUES 
-  (NOW(), 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 1, 'Test 1', 1),
-  (NOW(), 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 1, 'Test 2', 1),
-  (NOW(), 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 1,  'Test 3', 1);
+  (NOW(), 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 1),
+  (NOW(), 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 'Test 2', 1),
+  (NOW(), 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 'Test 3', 1);
 
 INSERT INTO gallery_imgs (post_id, image_url, public_id, resource_type)
 VALUES 
@@ -54,8 +64,8 @@ VALUES
   (1, 'image_url.com2', 'public_id_2', 'image'),
   (1, 'image_url.com3', 'public_id_3', 'image' );
 
-INSERT INTO creators (artist_name, first_name, last_name, email)
+INSERT INTO creators (artist_name, first_name, last_name, email, bio)
 
 VALUES
-('Brutus', 'Jeff', 'Stevens', 'Brutus@gmail.com'),
-('Highly Educated', 'Bob', 'Ross', 'Highlyeducated@gmail.com');
+('Brutus', 'Jeff', 'Stevens', 'Brutus@gmail.com', 'I blew glass for Julius Caesar himself'),
+('Highly Educated', 'Bob', 'Ross', 'Highlyeducated@gmail.com', 'PHD in blowing glass');
