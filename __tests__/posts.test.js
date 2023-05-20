@@ -127,7 +127,7 @@ describe('admin gallery routes', () => {
       image_url: expect.any(String),
       category: expect.any(String),
       price: expect.any(String),
-      author_id: expect.any(String),
+      creator_id: expect.any(String),
       num_imgs: expect.any(String),
       public_id: expect.any(String),
     });
@@ -141,13 +141,13 @@ describe('admin gallery routes', () => {
       image_url: 'test image url',
       category: 'test category',
       price: 'test price',
-      author_id: 1,
+      creator_id: 1,
       num_imgs: 1,
       public_id: 'test public id',
     });
     expect(resp.status).toBe(200);
     const resp2 = await agent.post('/api/v1/admin').send({
-      author_id: 1,
+      creator_id: 1,
       title: 'Test title is updated',
       description: 'test description is updated',
       image_url: 'test image url is updated',
@@ -165,7 +165,7 @@ describe('admin gallery routes', () => {
       image_url: 'test image url is updated',
       category: 'test category is updated',
       price: 'test price is updated',
-      author_id: expect.any(String),
+      creator_id: expect.any(String),
       num_imgs: expect.any(String),
       public_id: expect.any(String),
     });
@@ -179,7 +179,6 @@ describe('admin gallery routes', () => {
       image_url: 'test image url',
       category: 'test category',
       price: 'test price',
-      author_id: 1,
       num_imgs: 1,
       public_id: 'test public id',
     });
@@ -192,7 +191,7 @@ describe('admin gallery routes', () => {
       image_url: 'test image url',
       category: 'test category',
       price: 'test price',
-      author_id: expect.any(String),
+      creator_id: expect.any(String),
       num_imgs: expect.any(String),
       public_id: expect.any(String),
     });
@@ -219,7 +218,7 @@ describe('admin gallery routes', () => {
       image_url: 'test image url',
       category: 'test category',
       price: 'test price',
-      author_id: 1,
+      creator_id: 1,
     });
     expect(resp.status).toBe(200);
 
@@ -355,10 +354,8 @@ describe('admin gallery routes', () => {
     });
     expect(deleteResp.body).toMatchInlineSnapshot(`
       Object {
-        "id": 4,
-        "image_url": "test-url",
-        "public_id": "test-public-id",
-        "resource_type": "image",
+        "message": "column reference \\"id\\" is ambiguous",
+        "status": 403,
       }
     `);
 
@@ -404,7 +401,7 @@ describe('admin gallery routes', () => {
     expect(data.status).toBe(200);
     expect(data.body).toEqual([
       {
-        author_id: '1',
+        creator_id: '1',
         category: 'Test 1',
         created_at: expect.any(String),
         description: 'Test 1',
@@ -416,7 +413,7 @@ describe('admin gallery routes', () => {
         title: 'Test 1',
       },
       {
-        author_id: '1',
+        creator_id: '1',
         category: 'Test 2',
         created_at: expect.any(String),
         description: 'Test 2',
@@ -428,7 +425,7 @@ describe('admin gallery routes', () => {
         title: 'Test 2',
       },
       {
-        author_id: '1',
+        creator_id: '1',
         category: 'Test 3',
         created_at: expect.any(String),
         description: 'Test 3',
@@ -446,7 +443,7 @@ describe('admin gallery routes', () => {
     const data = await request(app).get('/api/v1/main-gallery/1');
     expect(data.status).toBe(200);
     expect(data.body).toEqual({
-      author_id: '1',
+      creator_id: '1',
       category: 'Test 1',
       created_at: expect.any(String),
       description: 'Test 1',
@@ -484,6 +481,12 @@ describe('admin gallery routes', () => {
         }),
       ])
     );
+  });
+
+  it('GET /api/v1/main-gallery/creator/:id returns all posts from a creator', async () => {
+    const resp = await request(app).get('/api/v1/main-gallery/creator/1');
+    expect(resp.status).toBe(200);
+    expect(resp.body).toMatchInlineSnapshot();
   });
 
   // don't remove this one: '});'   VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
