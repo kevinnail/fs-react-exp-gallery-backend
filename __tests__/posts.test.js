@@ -69,8 +69,6 @@ jest.mock('multer-storage-cloudinary', () => {
   };
 });
 
-// new ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 const mockUser = {
   email: 'test@example.com',
   password: '12345',
@@ -85,14 +83,6 @@ const registerAndLogin = async () => {
   return [agent, user];
 };
 
-// jest.mock('cloudinary', () => ({
-//   v2: {
-//     uploader: {
-//       upload: jest.fn(),
-//     },
-//     config: jest.fn(() => {}),
-//   },
-// }));
 describe('admin gallery routes', () => {
   beforeEach(() => {
     cloudinary.config({
