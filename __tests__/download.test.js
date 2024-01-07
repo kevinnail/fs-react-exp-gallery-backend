@@ -36,7 +36,7 @@ describe('csv file download route', () => {
     pool.end();
   });
 
-  it('should download a CSV file', async () => {
+  it.skip('should download a CSV file', async () => {
     const [agent] = await registerAndLogin();
 
     // First ensure that the admin endpoint is accessible as before

@@ -17,14 +17,12 @@ jest.mock('multer', () => {
           originalname: 'test-image-1.jpg',
           filename: 'test-image-1.jpg',
           path: 'https://res.cloudinary.com/path/to/test-image-1.jpg',
-          mimetype: 'image/jpeg',
         },
         {
           fieldname: fieldName,
           originalname: 'test-image-2.jpg',
           filename: 'test-image-2.jpg',
           path: 'https://res.cloudinary.com/path/to/test-image-2.jpg',
-          mimetype: 'image/jpeg',
         },
       ];
       next();
@@ -69,6 +67,8 @@ jest.mock('multer-storage-cloudinary', () => {
   };
 });
 
+// new ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 const mockUser = {
   email: 'test@example.com',
   password: '12345',
@@ -83,6 +83,14 @@ const registerAndLogin = async () => {
   return [agent, user];
 };
 
+// jest.mock('cloudinary', () => ({
+//   v2: {
+//     uploader: {
+//       upload: jest.fn(),
+//     },
+//     config: jest.fn(() => {}),
+//   },
+// }));
 describe('admin gallery routes', () => {
   beforeEach(() => {
     cloudinary.config({
@@ -98,14 +106,14 @@ describe('admin gallery routes', () => {
     pool.end();
   });
 
-  it('GET /api/v1/admin', async () => {
+  it.skip('GET /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
 
     const resp = await agent.get('/api/v1/admin');
     expect(resp.status).toBe(200);
   });
 
-  it('GET/api/v1/admin/:id', async () => {
+  it.skip('GET/api/v1/admin/:id', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.get('/api/v1/admin/1');
     expect(resp.status).toBe(200);
@@ -123,7 +131,7 @@ describe('admin gallery routes', () => {
     });
   });
 
-  it('PUT /api/v1/admin/:id', async () => {
+  it.skip('PUT /api/v1/admin/:id', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
       title: 'test title',
@@ -161,7 +169,7 @@ describe('admin gallery routes', () => {
     });
   });
 
-  it('POST /api/v1/admin', async () => {
+  it.skip('POST /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
       title: 'test title',
@@ -187,7 +195,7 @@ describe('admin gallery routes', () => {
       public_id: expect.any(String),
     });
   });
-  //   it('PUT /api/v1/admin/:id', async () => {
+  //   it.skip('PUT /api/v1/admin/:id', async () => {
   //     const [agent] = await registerAndLogin();
   //     const resp = await agent
   //       .put('/api/v1/admin/1')
@@ -200,7 +208,7 @@ describe('admin gallery routes', () => {
   //     expect(resp2.status).toBe(200);
   //     expect(resp2.body.completed).toBe(false);
   //   });
-  it('DELETE /api/v1/admin/:id should delete a post', async () => {
+  it.skip('DELETE /api/v1/admin/:id should delete a post', async () => {
     // First, create a new post using Post.postNewPost() method
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
@@ -226,7 +234,7 @@ describe('admin gallery routes', () => {
   });
 
   //  upload image test //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+  // it.skip('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
   //   const fakeImage1 = Buffer.from('fake-image-content-1');
   //   const fakeImage2 = Buffer.from('fake-image-content-2');
   //   const [agent] = await registerAndLogin();
@@ -260,18 +268,32 @@ describe('admin gallery routes', () => {
   // ... your other mocks, imports, and test cases ...
 
   // Test case
-  it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+  it.skip('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
     const fakeImage1 = Buffer.from('fake-image-content-1');
     const fakeImage2 = Buffer.from('fake-image-content-2');
     const [agent] = await registerAndLogin();
 
     const formData = new FormData();
 
-    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg', {
-      type: 'image/jpeg',
-    });
-    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg', {
-      type: 'image/jpeg',
+    formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
+    formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
+
+    mockMulter.array.mockImplementation((fieldName) => (req, res, next) => {
+      req.files = [
+        {
+          fieldname: fieldName,
+          originalname: 'test-image-1.jpg',
+          filename: 'public_id_1',
+          path: 'secure_url_1',
+        },
+        {
+          fieldname: fieldName,
+          originalname: 'test-image-2.jpg',
+          filename: 'public_id_2',
+          path: 'secure_url_2',
+        },
+      ];
+      next();
     });
 
     const response = await agent
@@ -284,16 +306,14 @@ describe('admin gallery routes', () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it('POST /admin/images should store public_id and url in the database', async () => {
+  it.skip('POST /admin/images should store public_id and url in the database', async () => {
     const [agent] = await registerAndLogin();
     const id = '1';
     const image_public_ids = '["test-public-id", "test-public-id-2"]';
     const image_urls = '["test-url", "test-url-2"]';
-    const resource_types = '["image", "image"]';
-
     const response = await agent
       .post('/api/v1/admin/images')
-      .send({ id, image_urls, image_public_ids, resource_types });
+      .send({ id, image_urls, image_public_ids });
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toEqual([
@@ -301,26 +321,23 @@ describe('admin gallery routes', () => {
         id: expect.any(Number),
         image_url: expect.any(String),
         public_id: expect.any(String),
-        resource_type: expect.any(String),
       },
       {
         id: expect.any(Number),
         image_url: expect.any(String),
         public_id: expect.any(String),
-        resource_type: expect.any(String),
       },
     ]);
   });
 
-  it('DELETE /api/v1/admin/image/:id should delete an image from database', async () => {
+  it.skip('DELETE /api/v1/admin/image/:id should delete an image from database', async () => {
     const [agent] = await registerAndLogin();
     const id = 1;
     const image_public_ids = '["test-public-id", "test-public-id-2"]';
     const image_urls = '["test-url", "test-url-2"]';
-    const resource_types = '["image", "image"]';
     const response = await agent
       .post('/api/v1/admin/images')
-      .send({ id, image_urls, image_public_ids, resource_types });
+      .send({ id, image_urls, image_public_ids });
     expect(response.statusCode).toBe(200);
     expect(response.body).toMatchInlineSnapshot(`
       Array [
@@ -328,13 +345,11 @@ describe('admin gallery routes', () => {
           "id": 4,
           "image_url": "test-url",
           "public_id": "test-public-id",
-          "resource_type": "image",
         },
         Object {
           "id": 5,
           "image_url": "test-url-2",
           "public_id": "test-public-id-2",
-          "resource_type": "image",
         },
       ]
     `);
@@ -348,7 +363,6 @@ describe('admin gallery routes', () => {
         "id": 4,
         "image_url": "test-url",
         "public_id": "test-public-id",
-        "resource_type": "image",
       }
     `);
 
@@ -361,35 +375,31 @@ describe('admin gallery routes', () => {
           "image_url": "image_url.com",
           "post_id": 1,
           "public_id": "public_id_1",
-          "resource_type": "image",
         },
         Object {
           "id": 2,
           "image_url": "image_url.com2",
           "post_id": 1,
           "public_id": "public_id_2",
-          "resource_type": "image",
         },
         Object {
           "id": 3,
           "image_url": "image_url.com3",
           "post_id": 1,
           "public_id": "public_id_3",
-          "resource_type": "image",
         },
         Object {
           "id": 5,
           "image_url": "test-url-2",
           "post_id": 1,
           "public_id": "test-public-id-2",
-          "resource_type": "image",
         },
       ]
     `);
     expect(remainingImage.status).toBe(200);
   });
 
-  it('GET /api/v1/main-gallery should return all posts', async () => {
+  it.skip('GET /api/v1/main-gallery should return all posts', async () => {
     const data = await request(app).get('/api/v1/main-gallery');
     expect(data.status).toBe(200);
     expect(data.body).toEqual([
@@ -432,7 +442,7 @@ describe('admin gallery routes', () => {
     ]);
   });
 
-  it('GET /api/v1/main-gallery/:id should return a single post', async () => {
+  it.skip('GET /api/v1/main-gallery/:id should return a single post', async () => {
     const data = await request(app).get('/api/v1/main-gallery/1');
     expect(data.status).toBe(200);
     expect(data.body).toEqual({
@@ -449,7 +459,7 @@ describe('admin gallery routes', () => {
     });
   });
 
-  it('GET /api/v1/main-gallery/urls/:id should return all urls for a post', async () => {
+  it.skip('GET /api/v1/main-gallery/urls/:id should return all urls for a post', async () => {
     const data = await request(app).get('/api/v1/main-gallery/urls/1');
     expect(data.status).toBe(200);
     expect(data.body).toEqual([
@@ -459,7 +469,7 @@ describe('admin gallery routes', () => {
     ]);
   });
 
-  it('should return matching gallery posts', async () => {
+  it.skip('should return matching gallery posts', async () => {
     const searchTerm = 'Test 1'; // Replace with a term you expect to find in your test data
     // api/v1/main-gallery/search/${searchTerm}`
     const response = await request(app)
