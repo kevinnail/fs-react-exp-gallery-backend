@@ -1,11 +1,12 @@
-# Template for Backend Express
 
-The Golden Rule:
-🦸 🦸‍♂️ Stop starting and start finishing. 🏁
+## This is the backend Express/ Node server for my [React Gallery App](https://github.com/kevinnail/fs-react-exp-gallery-frontend)
 
-If you work on more than one feature at a time, you are guaranteed to multiply your bugs and your anxiety.
+### This app demonstrates how to:
+- Set up auth for an owner/ user
+- Upload/ display images to Cloudinary
+- Use redirect to mitigate cors issues with using Netlify for the front end and Heroku for the back end
 
-## Scripts
+### Scripts
 
 | command                | description                                                                         |
 | ---------------------- | ----------------------------------------------------------------------------------- |
@@ -16,7 +17,7 @@ If you work on more than one feature at a time, you are guaranteed to multiply y
 | `npm run setup-db`     | sets up the database locally                                                        |
 | `npm run setup-heroku` | sets up the database on heroku                                                      |
 
-## User Routes
+### User Routes
 
 | Route                    | HTTP Method | HTTP Body                                                                              | Description                                        |
 | ------------------------ | ----------- | -------------------------------------------------------------------------------------- | -------------------------------------------------- |
