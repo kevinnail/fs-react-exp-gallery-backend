@@ -1,6 +1,6 @@
 # Ignore all files in the build folder
-clientBuild/build/static/js/787.7ba370de.chunk.js
-clientBuild/build/static/js/787.7ba370de.chunk.js.map
-clientBuild/build/static/js/main.39b13cc5.js
-clientBuild/build/static/js/main.39b13cc5.js.LICENSE.txt
-clientBuild/build/static/js/main.39b13cc5.js.map
+lib/clientBuild/build/static/js/787.7ba370de.chunk.js
+lib/clientBuild/build/static/js/787.7ba370de.chunk.js.map
+lib/clientBuild/build/static/js/main.39b13cc5.js
+lib/clientBuild/build/static/js/main.39b13cc5.js.LICENSE.txt
+lib/clientBuild/build/static/js/main.39b13cc5.js.map
