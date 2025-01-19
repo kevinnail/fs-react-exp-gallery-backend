@@ -7,67 +7,30 @@ const cloudinary = require('cloudinary').v2;
 const FormData = require('form-data');
 
 // Replace the upload middleware with the mockMulter
-jest.mock('multer', () => {
-  const mockMulter = {
-    array: jest.fn((fieldName) => (req, res, next) => {
-      // Add req.files with fake data when mocking the multer middleware
-      req.files = [
-        {
-          fieldname: fieldName,
-          originalname: 'test-image-1.jpg',
-          filename: 'test-image-1.jpg',
-          path: 'https://res.cloudinary.com/path/to/test-image-1.jpg',
-        },
-        {
-          fieldname: fieldName,
-          originalname: 'test-image-2.jpg',
-          filename: 'test-image-2.jpg',
-          path: 'https://res.cloudinary.com/path/to/test-image-2.jpg',
-        },
-      ];
-      next();
-    }),
-    none: jest.fn(() => (req, res, next) => next()),
-  };
+jest.mock('@aws-sdk/client-s3', () => {
+  const mockS3Send = jest.fn().mockImplementation((command) => {
+    if (command.constructor.name === 'PutObjectCommand') {
+      return Promise.resolve({
+        $metadata: { httpStatusCode: 200 },
+      });
+    }
+    if (command.constructor.name === 'DeleteObjectCommand') {
+      return Promise.resolve({
+        $metadata: { httpStatusCode: 204 },
+      });
+    }
+  });
 
-  return jest.fn().mockImplementation(() => mockMulter);
-});
-
-// working code for using local storage method vvvvvvvv
-// Mock the cloudinary.uploader.upload function
-// jest.mock('cloudinary', () => ({
-//   v2: {
-//     uploader: {
-//       upload: jest.fn(),
-//       upload_stream: jest.fn(),
-//     },
-//   },
-// }));
-// working code for using local storage method ^^^^^^^^
-
-// jest.mock('multer', () => {
-//   return function () {
-//     return mockMulter;
-//   };
-// });
-
-// Mock the CloudinaryStorage class
-jest.mock('multer-storage-cloudinary', () => {
   return {
-    CloudinaryStorage: jest.fn().mockImplementation(() => {
-      return {
-        _handle: (req, file, cb) => {
-          cb(null, {
-            public_id: 'test-public-id',
-            secure_url: 'https://test-cloudinary-url.com',
-          });
-        },
-      };
-    }),
+    S3Client: jest.fn(() => ({
+      send: mockS3Send,
+    })),
+    PutObjectCommand: jest.fn(),
+    DeleteObjectCommand: jest.fn(),
+    // Export the mock function so we can access it in tests
+    __mockS3Send: mockS3Send,
   };
 });
-
-// new ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 const mockUser = {
   email: 'test@example.com',
@@ -83,21 +46,8 @@ const registerAndLogin = async () => {
   return [agent, user];
 };
 
-// jest.mock('cloudinary', () => ({
-//   v2: {
-//     uploader: {
-//       upload: jest.fn(),
-//     },
-//     config: jest.fn(() => {}),
-//   },
-// }));
 describe('admin gallery routes', () => {
   beforeEach(() => {
-    cloudinary.config({
-      cloud_name: 'my_cloud_name',
-      api_key: 'my_api_key',
-      api_secret: 'my_api_secret',
-    });
     return setup(pool);
   });
 
