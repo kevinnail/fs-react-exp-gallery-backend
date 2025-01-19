@@ -3,7 +3,6 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
-const cloudinary = require('cloudinary').v2;
 const FormData = require('form-data');
 
 // Replace the upload middleware with the mockMulter
