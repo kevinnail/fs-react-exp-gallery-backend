@@ -21,6 +21,7 @@ CREATE TABLE gallery_posts (
   author_id BIGINT,
   public_id VARCHAR,
  num_imgs BIGINT
+ hide BOOLEAN DEFAULT FALSE,
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
