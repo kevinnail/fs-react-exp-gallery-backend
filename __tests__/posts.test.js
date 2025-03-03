@@ -100,6 +100,7 @@ describe('admin gallery routes', () => {
       sold: true,
       selling_link: 'http://www.website.com',
     });
+
     expect(resp.status).toBe(200);
     const resp2 = await agent.post('/api/v1/admin').send({
       author_id: 1,
@@ -161,6 +162,7 @@ describe('admin gallery routes', () => {
       num_imgs: 1,
       public_id: 'test public id',
       sold: false,
+      hide: false,
     });
     expect(resp.status).toBe(200);
     expect(resp.body).toEqual({
