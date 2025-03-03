@@ -36,12 +36,12 @@ describe('csv file download route', () => {
     pool.end();
   });
 
-  it.skip('should download a CSV file', async () => {
+  it('should download a CSV file', async () => {
     const [agent] = await registerAndLogin();
 
     // First ensure that the admin endpoint is accessible as before
-    const adminResp = await agent.get('/api/v1/admin');
-    expect(adminResp.status).toBe(200);
+    const adminPosts = await agent.get('/api/v1/admin');
+    expect(adminPosts.status).toBe(200);
 
     // Now test the CSV download
     const csvResp = await agent
@@ -49,14 +49,13 @@ describe('csv file download route', () => {
       .expect('Content-Type', /csv/)
       .expect(200);
 
-    // Check if the Content-Disposition header is set correctly for file download
-    expect(csvResp.headers['content-disposition']).toBe(
-      'attachment; filename=inventory.csv'
-    );
-
-    // Ensure that the CSV has the expected header structure. You can expand this to verify the data as well.
-    expect(csvResp.text).toContain(
-      '"created_at","title","description","category","price'
-    ); // Update this line if needed based on your CSV structure
+    expect(csvResp.status).toBe(200);
+    expect(csvResp.headers['content-type']).toBe('text/csv; charset=utf-8');
+    expect(csvResp.text).toMatchInlineSnapshot(`
+      "\\"created_at\\",\\"title\\",\\"description\\",\\"image_url\\",\\"category\\",\\"price\\"
+      \\"03/03/2025\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\"
+      \\"03/03/2025\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\"
+      \\"03/03/2025\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\""
+    `);
   });
 });

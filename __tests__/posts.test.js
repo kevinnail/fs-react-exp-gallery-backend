@@ -3,71 +3,33 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
-const cloudinary = require('cloudinary').v2;
 const FormData = require('form-data');
 
 // Replace the upload middleware with the mockMulter
-jest.mock('multer', () => {
-  const mockMulter = {
-    array: jest.fn((fieldName) => (req, res, next) => {
-      // Add req.files with fake data when mocking the multer middleware
-      req.files = [
-        {
-          fieldname: fieldName,
-          originalname: 'test-image-1.jpg',
-          filename: 'test-image-1.jpg',
-          path: 'https://res.cloudinary.com/path/to/test-image-1.jpg',
-        },
-        {
-          fieldname: fieldName,
-          originalname: 'test-image-2.jpg',
-          filename: 'test-image-2.jpg',
-          path: 'https://res.cloudinary.com/path/to/test-image-2.jpg',
-        },
-      ];
-      next();
-    }),
-    none: jest.fn(() => (req, res, next) => next()),
-  };
+jest.mock('@aws-sdk/client-s3', () => {
+  const mockS3Send = jest.fn().mockImplementation((command) => {
+    if (command.constructor.name === 'PutObjectCommand') {
+      return Promise.resolve({
+        $metadata: { httpStatusCode: 200 },
+      });
+    }
+    if (command.constructor.name === 'DeleteObjectCommand') {
+      return Promise.resolve({
+        $metadata: { httpStatusCode: 204 },
+      });
+    }
+  });
 
-  return jest.fn().mockImplementation(() => mockMulter);
-});
-
-// working code for using local storage method vvvvvvvv
-// Mock the cloudinary.uploader.upload function
-// jest.mock('cloudinary', () => ({
-//   v2: {
-//     uploader: {
-//       upload: jest.fn(),
-//       upload_stream: jest.fn(),
-//     },
-//   },
-// }));
-// working code for using local storage method ^^^^^^^^
-
-// jest.mock('multer', () => {
-//   return function () {
-//     return mockMulter;
-//   };
-// });
-
-// Mock the CloudinaryStorage class
-jest.mock('multer-storage-cloudinary', () => {
   return {
-    CloudinaryStorage: jest.fn().mockImplementation(() => {
-      return {
-        _handle: (req, file, cb) => {
-          cb(null, {
-            public_id: 'test-public-id',
-            secure_url: 'https://test-cloudinary-url.com',
-          });
-        },
-      };
-    }),
+    S3Client: jest.fn(() => ({
+      send: mockS3Send,
+    })),
+    PutObjectCommand: jest.fn(),
+    DeleteObjectCommand: jest.fn(),
+    // Export the mock function so we can access it in tests
+    __mockS3Send: mockS3Send,
   };
 });
-
-// new ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 const mockUser = {
   email: 'test@example.com',
@@ -80,24 +42,12 @@ const registerAndLogin = async () => {
   await agent
     .post('/api/v1/users/sessions')
     .send({ email: mockUser.email, password: mockUser.password });
+
   return [agent, user];
 };
 
-// jest.mock('cloudinary', () => ({
-//   v2: {
-//     uploader: {
-//       upload: jest.fn(),
-//     },
-//     config: jest.fn(() => {}),
-//   },
-// }));
 describe('admin gallery routes', () => {
   beforeEach(() => {
-    cloudinary.config({
-      cloud_name: 'my_cloud_name',
-      api_key: 'my_api_key',
-      api_secret: 'my_api_secret',
-    });
     return setup(pool);
   });
 
@@ -106,14 +56,15 @@ describe('admin gallery routes', () => {
     pool.end();
   });
 
-  it.skip('GET /api/v1/admin', async () => {
+  it('GET /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
 
     const resp = await agent.get('/api/v1/admin');
+
     expect(resp.status).toBe(200);
   });
 
-  it.skip('GET/api/v1/admin/:id', async () => {
+  it('GET/api/v1/admin/:id', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.get('/api/v1/admin/1');
     expect(resp.status).toBe(200);
@@ -128,10 +79,13 @@ describe('admin gallery routes', () => {
       author_id: expect.any(String),
       num_imgs: expect.any(String),
       public_id: expect.any(String),
+      hide: expect.any(Boolean),
+      selling_link: null,
+      sold: expect.any(Boolean),
     });
   });
 
-  it.skip('PUT /api/v1/admin/:id', async () => {
+  it('PUT /api/v1/admin/:id', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
       title: 'test title',
@@ -142,6 +96,9 @@ describe('admin gallery routes', () => {
       author_id: 1,
       num_imgs: 1,
       public_id: 'test public id',
+      hide: true,
+      sold: true,
+      selling_link: 'http://www.website.com',
     });
     expect(resp.status).toBe(200);
     const resp2 = await agent.post('/api/v1/admin').send({
@@ -153,6 +110,26 @@ describe('admin gallery routes', () => {
       price: 'test price is updated',
       num_imgs: 1,
       public_id: 'test public id',
+      hide: true,
+      sold: false,
+      selling_link: '',
+    });
+
+    expect(resp.status).toBe(200);
+    expect(resp.body).toEqual({
+      id: expect.any(String),
+      created_at: expect.any(String),
+      title: 'test title',
+      description: 'test description',
+      image_url: 'test image url',
+      category: 'test category',
+      price: 'test price',
+      author_id: expect.any(String),
+      num_imgs: expect.any(String),
+      public_id: expect.any(String),
+      hide: expect.any(Boolean),
+      sold: true,
+      selling_link: null,
     });
     expect(resp2.status).toBe(200);
     expect(resp2.body).toEqual({
@@ -166,10 +143,13 @@ describe('admin gallery routes', () => {
       author_id: expect.any(String),
       num_imgs: expect.any(String),
       public_id: expect.any(String),
+      hide: expect.any(Boolean),
+      sold: false,
+      selling_link: null,
     });
   });
 
-  it.skip('POST /api/v1/admin', async () => {
+  it('POST /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
       title: 'test title',
@@ -180,6 +160,7 @@ describe('admin gallery routes', () => {
       author_id: 1,
       num_imgs: 1,
       public_id: 'test public id',
+      sold: false,
     });
     expect(resp.status).toBe(200);
     expect(resp.body).toEqual({
@@ -193,9 +174,13 @@ describe('admin gallery routes', () => {
       author_id: expect.any(String),
       num_imgs: expect.any(String),
       public_id: expect.any(String),
+      selling_link: null,
+      sold: false,
+      hide: false,
     });
   });
-  //   it.skip('PUT /api/v1/admin/:id', async () => {
+
+  //   it('PUT /api/v1/admin/:id', async () => {
   //     const [agent] = await registerAndLogin();
   //     const resp = await agent
   //       .put('/api/v1/admin/1')
@@ -208,7 +193,8 @@ describe('admin gallery routes', () => {
   //     expect(resp2.status).toBe(200);
   //     expect(resp2.body.completed).toBe(false);
   //   });
-  it.skip('DELETE /api/v1/admin/:id should delete a post', async () => {
+
+  it('DELETE /api/v1/admin/:id should delete a post', async () => {
     // First, create a new post using Post.postNewPost() method
     const [agent] = await registerAndLogin();
     const resp = await agent.post('/api/v1/admin').send({
@@ -234,7 +220,7 @@ describe('admin gallery routes', () => {
   });
 
   //  upload image test //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // it.skip('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+  // it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
   //   const fakeImage1 = Buffer.from('fake-image-content-1');
   //   const fakeImage2 = Buffer.from('fake-image-content-2');
   //   const [agent] = await registerAndLogin();
@@ -268,7 +254,7 @@ describe('admin gallery routes', () => {
   // ... your other mocks, imports, and test cases ...
 
   // Test case
-  it.skip('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
+  it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
     const fakeImage1 = Buffer.from('fake-image-content-1');
     const fakeImage2 = Buffer.from('fake-image-content-2');
     const [agent] = await registerAndLogin();
@@ -298,15 +284,12 @@ describe('admin gallery routes', () => {
 
     const response = await agent
       .post('/api/v1/admin/upload')
-      .set(
-        'Content-Type',
-        `multipart/form-data; boundary=${formData.getBoundary()}`
-      )
+      .set('Content-Type', `multipart/form-data; boundary=${formData.getBoundary()}`)
       .send(formData.getBuffer());
     expect(response.statusCode).toBe(200);
   });
 
-  it.skip('POST /admin/images should store public_id and url in the database', async () => {
+  it('POST /admin/images should store public_id and url in the database', async () => {
     const [agent] = await registerAndLogin();
     const id = '1';
     const image_public_ids = '["test-public-id", "test-public-id-2"]';
@@ -330,7 +313,7 @@ describe('admin gallery routes', () => {
     ]);
   });
 
-  it.skip('DELETE /api/v1/admin/image/:id should delete an image from database', async () => {
+  it('DELETE /api/v1/admin/image/:id should delete an image from database', async () => {
     const [agent] = await registerAndLogin();
     const id = 1;
     const image_public_ids = '["test-public-id", "test-public-id-2"]';
@@ -399,7 +382,7 @@ describe('admin gallery routes', () => {
     expect(remainingImage.status).toBe(200);
   });
 
-  it.skip('GET /api/v1/main-gallery should return all posts', async () => {
+  it('GET /api/v1/main-gallery should return all posts', async () => {
     const data = await request(app).get('/api/v1/main-gallery');
     expect(data.status).toBe(200);
     expect(data.body).toEqual([
@@ -408,41 +391,50 @@ describe('admin gallery routes', () => {
         category: 'Test 1',
         created_at: expect.any(String),
         description: 'Test 1',
+        hide: false,
         id: '1',
         image_url: 'Test 1',
         num_imgs: '1',
         price: 'Test 1',
         public_id: 'Test 1',
         title: 'Test 1',
+        sold: false,
+        selling_link: null,
       },
       {
         author_id: '1',
         category: 'Test 2',
         created_at: expect.any(String),
         description: 'Test 2',
+        hide: false,
         id: '2',
         image_url: 'Test 2',
         num_imgs: '1',
         price: 'Test 2',
         public_id: 'Test 2',
         title: 'Test 2',
+        sold: false,
+        selling_link: null,
       },
       {
         author_id: '1',
         category: 'Test 3',
         created_at: expect.any(String),
         description: 'Test 3',
+        hide: false,
         id: '3',
         image_url: 'Test 3',
         num_imgs: '1',
         price: 'Test 3',
         public_id: 'Test 3',
         title: 'Test 3',
+        sold: false,
+        selling_link: null,
       },
     ]);
   });
 
-  it.skip('GET /api/v1/main-gallery/:id should return a single post', async () => {
+  it('GET /api/v1/main-gallery/:id should return a single post', async () => {
     const data = await request(app).get('/api/v1/main-gallery/1');
     expect(data.status).toBe(200);
     expect(data.body).toEqual({
@@ -456,10 +448,13 @@ describe('admin gallery routes', () => {
       price: 'Test 1',
       public_id: 'Test 1',
       title: 'Test 1',
+      hide: false,
+      selling_link: null,
+      sold: false,
     });
   });
 
-  it.skip('GET /api/v1/main-gallery/urls/:id should return all urls for a post', async () => {
+  it('GET /api/v1/main-gallery/urls/:id should return all urls for a post', async () => {
     const data = await request(app).get('/api/v1/main-gallery/urls/1');
     expect(data.status).toBe(200);
     expect(data.body).toEqual([
@@ -469,7 +464,7 @@ describe('admin gallery routes', () => {
     ]);
   });
 
-  it.skip('should return matching gallery posts', async () => {
+  it('GET should return matching gallery posts', async () => {
     const searchTerm = 'Test 1'; // Replace with a term you expect to find in your test data
     // api/v1/main-gallery/search/${searchTerm}`
     const response = await request(app)
