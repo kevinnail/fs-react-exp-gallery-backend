@@ -100,6 +100,7 @@ describe('admin gallery routes', () => {
       sold: true,
       selling_link: 'http://www.website.com',
     });
+
     expect(resp.status).toBe(200);
     const resp2 = await agent.post('/api/v1/admin').send({
       author_id: 1,
@@ -161,6 +162,7 @@ describe('admin gallery routes', () => {
       num_imgs: 1,
       public_id: 'test public id',
       sold: false,
+      hide: false,
     });
     expect(resp.status).toBe(200);
     expect(resp.body).toEqual({
@@ -322,20 +324,18 @@ describe('admin gallery routes', () => {
       .post('/api/v1/admin/images')
       .send({ id, image_urls, image_public_ids });
     expect(response.statusCode).toBe(200);
-    expect(response.body).toMatchInlineSnapshot(`
-      Array [
-        Object {
-          "id": 4,
-          "image_url": "test-url",
-          "public_id": "test-public-id",
-        },
-        Object {
-          "id": 5,
-          "image_url": "test-url-2",
-          "public_id": "test-public-id-2",
-        },
-      ]
-    `);
+    expect(response.body).toEqual([
+      {
+        id: 4,
+        image_url: 'test-url',
+        public_id: 'test-public-id',
+      },
+      {
+        id: 5,
+        image_url: 'test-url-2',
+        public_id: 'test-public-id-2',
+      },
+    ]);
 
     const publicimgToDelete = response.body[0].public_id;
     const deleteResp = await agent.delete(`/api/v1/admin/image/${id}`).send({
