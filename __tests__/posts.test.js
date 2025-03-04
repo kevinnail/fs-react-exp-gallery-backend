@@ -324,20 +324,18 @@ describe('admin gallery routes', () => {
       .post('/api/v1/admin/images')
       .send({ id, image_urls, image_public_ids });
     expect(response.statusCode).toBe(200);
-    expect(response.body).toMatchInlineSnapshot(`
-      Array [
-        Object {
-          "id": 4,
-          "image_url": "test-url",
-          "public_id": "test-public-id",
-        },
-        Object {
-          "id": 5,
-          "image_url": "test-url-2",
-          "public_id": "test-public-id-2",
-        },
-      ]
-    `);
+    expect(response.body).toEqual([
+      {
+        id: 4,
+        image_url: 'test-url',
+        public_id: 'test-public-id',
+      },
+      {
+        id: 5,
+        image_url: 'test-url-2',
+        public_id: 'test-public-id-2',
+      },
+    ]);
 
     const publicimgToDelete = response.body[0].public_id;
     const deleteResp = await agent.delete(`/api/v1/admin/image/${id}`).send({
