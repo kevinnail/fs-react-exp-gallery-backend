@@ -53,9 +53,9 @@ describe('csv file download route', () => {
     expect(csvResp.headers['content-type']).toBe('text/csv; charset=utf-8');
     expect(csvResp.text).toMatchInlineSnapshot(`
       "\\"created_at\\",\\"title\\",\\"description\\",\\"image_url\\",\\"category\\",\\"price\\"
-      \\"03/03/2025\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\"
-      \\"03/03/2025\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\"
-      \\"03/03/2025\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\""
+      \\"03/10/2025\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\",\\"Test 1\\"
+      \\"03/10/2025\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\",\\"Test 2\\"
+      \\"03/10/2025\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\",\\"Test 3\\""
     `);
   });
 });
