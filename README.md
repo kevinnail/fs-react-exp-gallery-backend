@@ -1,27 +1,57 @@
-# Template for Backend Express
+# Stress Less Glass - Backend
 
-The Golden Rule:
-🦸 🦸‍♂️ Stop starting and start finishing. 🏁
+This is the backend service for my personal glass art business website, Stress Less Glass. The application provides a robust API for managing my gallery system, handling customer orders, and showcasing my glass artwork.
 
-If you work on more than one feature at a time, you are guaranteed to multiply your bugs and your anxiety.
+## Features
 
-## Scripts
+- RESTful API architecture for seamless frontend integration
+- Secure user authentication for admin access
+- Image management with AWS S3 for high-quality artwork display
+- PostgreSQL database for reliable data storage
+- Order management system
+- Data export capabilities for business analytics
+- Comprehensive test suite ensuring reliability
 
-| command                | description                                                                         |
-| ---------------------- | ----------------------------------------------------------------------------------- |
-| `npm start`            | starts the app - should only be used in production as changes will not get reloaded |
-| `npm run start:watch`  | runs the app using `nodemon` which watches for changes and reloads the app          |
-| `npm test`             | runs the tests once                                                                 |
-| `npm run test:watch`   | continually watches and runs the tests when files are updated                       |
-| `npm run setup-db`     | sets up the database locally                                                        |
-| `npm run setup-heroku` | sets up the database on heroku                                                      |
+## Tech Stack
 
-## User Routes
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** PostgreSQL
+- **Storage:** AWS S3
+- **Authentication:** JWT (JSON Web Tokens)
+- **Testing:** Jest
+- **Code Quality:** ESLint, Prettier
 
-| Route                    | HTTP Method | HTTP Body                                                                              | Description                                        |
-| ------------------------ | ----------- | -------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `/api/v1/users/`         | `POST`      | `{email: 'example@test.com', password: '123456', firstName: 'Test', lastName: 'User'}` | Creates new user                                   |
-| `api/v1/users/sessions/` | `POST`      | `{email: 'example@test.com', password: '123456'}`                                      | Signs in existing user                             |
-| `/api/v1/users/me/`      | `GET`       | None                                                                                   | Returns current user                               |
-| `/api/v1/users/`         | `GET`       | None                                                                                   | Authorized endpoint - returns all users for admin. |
-| `api/v1/users/sessions/` | `DELETE`    | None                                                                                   | Deletes a user session                             |
+## Project Overview
+
+This repository contains the backend implementation for my glass art business website. It's designed to handle:
+
+- Artwork gallery management
+- Customer order processing
+- Admin authentication
+- Image storage and delivery
+- Business data management
+
+## Project Structure
+
+```
+├── lib/                    # Main application code
+│   ├── controllers/       # Route controllers
+│   ├── middleware/        # Custom middleware
+│   ├── models/           # Database models
+│   ├── services/         # Business logic
+│   ├── utils/            # Utility functions
+│   └── app.js            # Express application setup
+├── __tests__/            # Test files
+├── sql/                  # Database migrations and seeds
+├── data/                 # Data files
+└── server.js             # Application entry point
+```
+
+## About
+
+This is a personal project showcasing my full-stack development skills while serving as the backend for my glass art business website. The implementation demonstrates my ability to create secure, scalable, and maintainable web applications using modern technologies.
+
+## Contact
+
+For business inquiries, please visit [Stress Less Glass](http://stresslessglass.kevinnail.com) or contact me directly at [kevin@kevinnail.com](mailto:kevin@kevinnail.com).

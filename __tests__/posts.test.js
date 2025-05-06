@@ -5,7 +5,6 @@ const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const FormData = require('form-data');
 
-// Replace the upload middleware with the mockMulter
 jest.mock('@aws-sdk/client-s3', () => {
   const mockS3Send = jest.fn().mockImplementation((command) => {
     if (command.constructor.name === 'PutObjectCommand') {
@@ -26,7 +25,6 @@ jest.mock('@aws-sdk/client-s3', () => {
     })),
     PutObjectCommand: jest.fn(),
     DeleteObjectCommand: jest.fn(),
-    // Export the mock function so we can access it in tests
     __mockS3Send: mockS3Send,
   };
 });
@@ -253,8 +251,6 @@ describe('admin gallery routes', () => {
     return jest.fn().mockImplementation(() => mockMulter);
   });
 
-  // ... your other mocks, imports, and test cases ...
-
   // Test case
   it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
     const fakeImage1 = Buffer.from('fake-image-content-1');
@@ -465,13 +461,11 @@ describe('admin gallery routes', () => {
   });
 
   it('GET should return matching gallery posts', async () => {
-    const searchTerm = 'Test 1'; // Replace with a term you expect to find in your test data
-    // api/v1/main-gallery/search/${searchTerm}`
+    const searchTerm = 'Test 1';
     const response = await request(app)
       .get(`/api/v1/main-gallery/search/${searchTerm}`)
       .expect(200);
 
-    // Check if the response contains the expected posts
     expect(response.body).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -480,6 +474,4 @@ describe('admin gallery routes', () => {
       ])
     );
   });
-
-  // don't remove this one: '});'   VVVVV ---- TEST ABOVE///////////////////////////////////////////////////////
 });
