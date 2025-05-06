@@ -1,5 +1,7 @@
 # Stress Less Glass - Backend
 
+![Logo](https://fs-react-exp-gallery-kn.netlify.app/logo-sq-180.png)
+
 This is the backend service for my personal glass art business website, Stress Less Glass. The application provides a robust API for managing my gallery system, handling customer orders, and showcasing my glass artwork.
 
 ## Features
