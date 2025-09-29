@@ -20,7 +20,7 @@
         "SwitchCase": 1
       }
     ],
-    "quotes": ["error", "single"],
+    "quotes": ["error", "single", { "avoidEscape": true }],
     "semi": ["error", "always"],
     "space-in-parens": ["error"],
     "space-infix-ops": "error",
