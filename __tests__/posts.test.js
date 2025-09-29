@@ -338,7 +338,7 @@ describe('admin gallery routes', () => {
       public_id: publicimgToDelete,
     });
     expect(deleteResp.body).toMatchInlineSnapshot(`
-      Object {
+      {
         "id": 4,
         "image_url": "test-url",
         "public_id": "test-public-id",
@@ -348,26 +348,26 @@ describe('admin gallery routes', () => {
     expect(deleteResp.status).toBe(200);
     const remainingImage = await agent.get(`/api/v1/admin/urls/${id}`);
     expect(remainingImage.body).toMatchInlineSnapshot(`
-      Array [
-        Object {
+      [
+        {
           "id": 1,
           "image_url": "image_url.com",
           "post_id": 1,
           "public_id": "public_id_1",
         },
-        Object {
+        {
           "id": 2,
           "image_url": "image_url.com2",
           "post_id": 1,
           "public_id": "public_id_2",
         },
-        Object {
+        {
           "id": 3,
           "image_url": "image_url.com3",
           "post_id": 1,
           "public_id": "public_id_3",
         },
-        Object {
+        {
           "id": 5,
           "image_url": "test-url-2",
           "post_id": 1,
@@ -471,7 +471,7 @@ describe('admin gallery routes', () => {
         expect.objectContaining({
           title: expect.stringContaining(searchTerm),
         }),
-      ])
+      ]),
     );
   });
 });
