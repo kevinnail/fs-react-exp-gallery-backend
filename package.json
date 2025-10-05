@@ -10,6 +10,7 @@
     "start": "node -r dotenv/config server.js",
     "start:watch": "nodemon -r dotenv/config server.js",
     "setup-db": "node -r dotenv/config setup-db.js",
+    "setup-test-db": "node -r dotenv/config setup-test-db.js",
     "setup-heroku": "heroku run npm run setup-db"
   },
   "jest": {
