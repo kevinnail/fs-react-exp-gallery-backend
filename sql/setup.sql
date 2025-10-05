@@ -1,5 +1,6 @@
 -- Use this file to define your SQL tables
 -- The SQL in this file will be executed when you run `npm run setup-db`
+DROP TABLE IF EXISTS profiles CASCADE;
 DROP TABLE IF EXISTS users_admin CASCADE;
 DROP TABLE IF EXISTS gallery_posts CASCADE;
 DROP TABLE IF EXISTS gallery_imgs CASCADE;
@@ -33,6 +34,18 @@ CREATE TABLE gallery_imgs (
   image_url VARCHAR(255),
   public_id VARCHAR(255),
   FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE profiles (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  image_url VARCHAR(500),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE,
+  UNIQUE(user_id)
 );
 
 
