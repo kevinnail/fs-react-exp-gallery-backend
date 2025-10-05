@@ -15,6 +15,13 @@ jobs:
       - uses: actions/checkout@v2
       - run: npm ci --dev
       - run: npx eslint .
+      - run: npm run setup-test-db
+        env:
+          DATABASE_URL: postgres://knail:knail@postgres:5432/knail
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SALT_ROUNDS: ${{ secrets.SALT_ROUNDS }}
+          COOKIE_NAME: ${{ secrets.COOKIE_NAME }}
+          ALLOWED_EMAILS: ${{secrets.ALLOWED_EMAILS}}
       - run: npm test -- -u
         env:
           CI: true
