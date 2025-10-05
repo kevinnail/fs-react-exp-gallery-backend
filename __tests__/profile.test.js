@@ -68,14 +68,6 @@ describe('Profile routes', () => {
     it('should return user profile when authenticated and profile exists', async () => {
       const [agent, user] = await registerAndLogin();
 
-      // Create a profile first
-      const profile = await Profile.insert({
-        userId: user.id,
-        firstName: 'John',
-        lastName: 'Doe',
-        imageUrl: 'https://example.com/image.jpg',
-      });
-
       const res = await agent.get('/api/v1/profile');
       expect(res.status).toBe(200);
       expect(res.body).toEqual({
