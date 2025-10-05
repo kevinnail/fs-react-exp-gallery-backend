@@ -67,10 +67,15 @@ describe('Profile routes', () => {
 
     it('should return user profile when authenticated and profile exists', async () => {
       const [agent, user] = await registerAndLogin();
+      await agent.put('/api/v1/profile').send({
+        firstName: 'John',
+        lastName: 'Doe',
+        imageUrl: 'https://example.com/image.jpg',
+      });
 
-      const res = await agent.get('/api/v1/profile');
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual({
+      const resGet = await agent.get('/api/v1/profile');
+      expect(resGet.status).toBe(200);
+      expect(resGet.body).toEqual({
         id: expect.any(String),
         userId: user.id,
         firstName: 'John',
