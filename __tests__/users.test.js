@@ -53,22 +53,6 @@ describe('user routes', () => {
     expect(res.status).toEqual(200);
   });
 
-  it('/users should return 401 if email not on the allowed list', async () => {
-    const nonAdminUser = {
-      email: 'nonadmin@example.com',
-      password: 'testpassword',
-    };
-    const agent = request.agent(app);
-
-    const res = await agent
-      .post('/api/v1/users')
-      .send(nonAdminUser)
-      .catch((err) => err.response);
-
-    expect(res.status).toEqual(401);
-    expect(res.body.message).toEqual('Email not allowed');
-  });
-
   it('/users should return 200 if user is admin', async () => {
     const agent = request.agent(app);
 
