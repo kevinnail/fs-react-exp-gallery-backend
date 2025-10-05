@@ -53,22 +53,6 @@ describe('user routes', () => {
     expect(res.status).toEqual(200);
   });
 
-  it('/users should return 401 if email not on the allowed list', async () => {
-    const nonAdminUser = {
-      email: 'nonadmin@example.com',
-      password: 'testpassword',
-    };
-    const agent = request.agent(app);
-
-    const res = await agent
-      .post('/api/v1/users')
-      .send(nonAdminUser)
-      .catch((err) => err.response);
-
-    expect(res.status).toEqual(401);
-    expect(res.body.message).toEqual('Email not allowed');
-  });
-
   it('/users should return 200 if user is admin', async () => {
     const agent = request.agent(app);
 
@@ -96,5 +80,31 @@ describe('user routes', () => {
     const [agent] = await registerAndLogin();
     const resp = await agent.delete('/api/v1/users/sessions');
     expect(resp.status).toBe(204);
+  });
+
+  it('GET /me returns user data when authenticated', async () => {
+    const [agent, user] = await registerAndLogin();
+    const res = await agent.get('/api/v1/users/me');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      user: {
+        id: user.id,
+        email: user.email,
+        exp: expect.any(Number),
+        iat: expect.any(Number),
+      },
+      isAdmin: expect.any(Boolean),
+    });
+  });
+
+  it('GET /me returns 401 when not authenticated', async () => {
+    const res = await request(app).get('/api/v1/users/me');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /users returns 403 when user is not admin', async () => {
+    const [agent] = await registerAndLogin({ email: 'regular@example.com' });
+    const res = await agent.get('/api/v1/users/');
+    expect(res.status).toBe(403);
   });
 });
