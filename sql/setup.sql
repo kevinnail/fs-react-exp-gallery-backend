@@ -48,6 +48,17 @@ CREATE TABLE profiles (
   UNIQUE(user_id)
 );
 
+CREATE TABLE messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  conversation_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  message_content TEXT NOT NULL,
+  sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  is_read BOOLEAN DEFAULT FALSE,
+  is_from_admin BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE
+);
+
 
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
