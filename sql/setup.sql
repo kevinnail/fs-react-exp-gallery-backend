@@ -1,9 +1,10 @@
 -- Use this file to define your SQL tables
 -- The SQL in this file will be executed when you run `npm run setup-db`
-DROP TABLE IF EXISTS profiles CASCADE;
 DROP TABLE IF EXISTS users_admin CASCADE;
 DROP TABLE IF EXISTS gallery_posts CASCADE;
 DROP TABLE IF EXISTS gallery_imgs CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -46,6 +47,17 @@ CREATE TABLE profiles (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE,
   UNIQUE(user_id)
+);
+
+CREATE TABLE messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  conversation_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  message_content TEXT NOT NULL,
+  sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  is_read BOOLEAN DEFAULT FALSE,
+  is_from_admin BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE
 );
 
 
