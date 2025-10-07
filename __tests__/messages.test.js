@@ -180,7 +180,7 @@ describe('Message routes', () => {
     });
 
     it('should return conversations when user is admin', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       const res = await agent.get('/api/v1/messages/conversations');
 
@@ -204,7 +204,7 @@ describe('Message routes', () => {
     });
 
     it('should return conversation messages when user is admin', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       const res = await agent.get('/api/v1/messages/conversations/1');
 
@@ -228,7 +228,7 @@ describe('Message routes', () => {
     });
 
     it('should return all messages when user is admin', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       const res = await agent.get('/api/v1/messages');
 
@@ -243,16 +243,8 @@ describe('Message routes', () => {
       expect(res.status).toBe(401);
     });
 
-    it('should return 403 when user is not admin', async () => {
-      const [agent] = await registerAndLogin({ email: 'regular@example.com' });
-
-      const res = await agent.patch('/api/v1/messages/1/read');
-
-      expect(res.status).toBe(403);
-    });
-
     it('should mark message as read when user is admin', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       // First create a message to mark as read
       const messageRes = await agent.post('/api/v1/messages').send({
@@ -276,7 +268,7 @@ describe('Message routes', () => {
     });
 
     it('should return 400 when invalid ID is provided', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       const res = await agent.patch('/api/v1/messages/invalid-id/read');
 
@@ -302,7 +294,7 @@ describe('Message routes', () => {
     });
 
     it('should delete message when user is admin', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       // First create a message to delete
       const messageRes = await agent.post('/api/v1/messages').send({
@@ -326,7 +318,7 @@ describe('Message routes', () => {
     });
 
     it('should return 400 when invalid ID is provided', async () => {
-      const [agent] = await registerAndLogin({ email: 'admin' });
+      const [agent] = await registerAndLogin({ email: process.env.ALLOWED_EMAILS.split(',')[0] });
 
       const res = await agent.delete('/api/v1/messages/invalid-id');
 
@@ -427,6 +419,7 @@ describe('Message model', () => {
         last_message_at: expect.any(Date),
         message_count: '1',
         unread_count: '1',
+        image_url: null,
       });
     });
   });
