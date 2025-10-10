@@ -5,6 +5,8 @@ DROP TABLE IF EXISTS gallery_posts CASCADE;
 DROP TABLE IF EXISTS gallery_imgs CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
 DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS auctions CASCADE;
+
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -60,6 +62,22 @@ CREATE TABLE messages (
   FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE
 );
 
+CREATE TABLE auctions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  image_urls TEXT[] NOT NULL DEFAULT '{}',
+  start_price INTEGER NOT NULL,
+  buy_now_price INTEGER,
+  current_bid INTEGER,
+  start_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  end_time TIMESTAMP NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  creator_id BIGINT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (creator_id) REFERENCES users_admin(id) ON DELETE CASCADE
+);
 
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
