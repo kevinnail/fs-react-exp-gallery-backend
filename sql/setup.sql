@@ -92,6 +92,14 @@ CREATE TABLE bids (
   FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE
 );
 
+CREATE TABLE auction_results (
+  id SERIAL PRIMARY KEY,
+  auction_id INTEGER REFERENCES auctions(id) UNIQUE,
+  winner_id INTEGER REFERENCES users_admin(id),
+  final_bid NUMERIC,
+  closed_at TIMESTAMP DEFAULT now(),
+  closed_reason TEXT CHECK (closed_reason IN ('expired', 'buy_now'))
+);
 
 
 
