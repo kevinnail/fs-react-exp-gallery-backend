@@ -79,6 +79,21 @@ CREATE TABLE auctions (
   FOREIGN KEY (creator_id) REFERENCES users_admin(id) ON DELETE CASCADE
 );
 
+CREATE TABLE bids (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  auction_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  bid_amount INTEGER NOT NULL CHECK (bid_amount > 0),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  -- Relationships
+  FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE
+);
+
+
+
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
 VALUES 
