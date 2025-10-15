@@ -101,17 +101,18 @@ CREATE TABLE auction_results (
   winner_id INTEGER REFERENCES users_admin(id),
   final_bid NUMERIC,
   closed_at TIMESTAMP DEFAULT now(),
-  closed_reason TEXT CHECK (closed_reason IN ('expired', 'buy_now'))
+  closed_reason TEXT NOT NULL
 );
 
 CREATE TABLE auction_notifications (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   auction_id BIGINT NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('outbid')),
+  type TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   is_read BOOLEAN NOT NULL DEFAULT FALSE
 );
+
 
 
 
