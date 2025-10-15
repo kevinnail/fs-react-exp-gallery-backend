@@ -104,6 +104,17 @@ CREATE TABLE auction_results (
   closed_reason TEXT CHECK (closed_reason IN ('expired', 'buy_now'))
 );
 
+CREATE TABLE auction_notifications (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  auction_id BIGINT NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('outbid')),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  is_read BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+
+
 
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
