@@ -31,7 +31,7 @@ async function sendMail(to, subject, html) {
   });
   console.log('data', data);
 }
-const to = 'email@email.com';
+const to = process.env.MAIL_TO;
 
 const subject = 'Test message from Stress Less Glass';
 const html = `
