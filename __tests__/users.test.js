@@ -3,14 +3,13 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
+const User = require('../lib/models/User.js');
 
 jest.mock('../lib/utils/mailer.js', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue(),
 }));
 
 const mockUser = {
-  firstName: 'Test',
-  lastName: 'User',
   email: 'test@example.com',
   password: '12345',
 };
@@ -80,19 +79,29 @@ describe('user routes', () => {
     expect(resp.status).toBe(204);
   });
 
-  it('GET /me returns user data when authenticated', async () => {
-    const [agent, user] = await registerAndLogin();
-    const res = await agent.get('/api/v1/users/me');
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      user: {
-        id: user.id,
-        email: user.email,
-        exp: expect.any(Number),
-        iat: expect.any(Number),
-      },
-      isAdmin: expect.any(Boolean),
+  it('verifies a user and allows them to access /me', async () => {
+    // Step 1 - Create an unverified user (directly through the service)
+    const mockUser = { email: 'testverify@example.com', password: '12345' };
+    const { verifyToken } = await UserService.create(mockUser);
+
+    // Step 2 - Simulate clicking the verification link
+    const verifyRes = await request(app).get(`/api/v1/users/verify?token=${verifyToken}`);
+
+    expect(verifyRes.status).toBe(302);
+
+    // Step 3 - Login after verification using a fresh agent to hold cookies
+    const agent = request.agent(app);
+    const loginRes = await agent.post('/api/v1/users/sessions').send({
+      email: mockUser.email,
+      password: mockUser.password,
     });
+    expect(loginRes.status).toBe(200);
+
+    // Step 4 - Now check /me
+    const meRes = await agent.get('/api/v1/users/me');
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.user.email).toBe(mockUser.email);
+    expect(meRes.body.user.isVerified).toBe(true);
   });
 
   it('GET /me returns 401 when not authenticated', async () => {
@@ -104,5 +113,18 @@ describe('user routes', () => {
     const [agent] = await registerAndLogin({ email: 'regular@example.com' });
     const res = await agent.get('/api/v1/users/');
     expect(res.status).toBe(403);
+  });
+
+  it('verifies a user when the token is valid', async () => {
+    const { user, verifyToken } = await UserService.create(mockUser);
+    const unverifiedUser = await User.getByEmail(user.email);
+    expect(unverifiedUser.isVerified).toBe(false);
+
+    // simulate clicking the verification link
+    const res = await request(app).get(`/api/v1/users/verify?token=${verifyToken}`);
+
+    expect(res.status).toBe(302); // redirect
+    const verifiedUser = await User.getByEmail(user.email);
+    expect(verifiedUser.isVerified).toBe(true);
   });
 });
