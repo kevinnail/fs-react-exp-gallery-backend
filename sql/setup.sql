@@ -13,7 +13,8 @@ DROP TABLE IF EXISTS auction_notifications CASCADE;
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   email VARCHAR UNIQUE NOT NULL,
-  password_hash VARCHAR NOT NULL
+  password_hash VARCHAR NOT NULL,
+  is_verified BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE gallery_posts (
