@@ -17,7 +17,7 @@ const registerAndLogin = async (userProps = {}) => {
   const password = userToUse.password;
 
   const agent = request.agent(app);
-  const user = await UserService.create(userToUse);
+  const { user } = await UserService.create(userToUse);
   const { email } = user;
   await agent.post('/api/v1/users/sessions').send({ email, password });
   return [agent, user];
@@ -337,7 +337,7 @@ describe('Message model', () => {
 
   describe('Message.insert', () => {
     it('should insert a new message', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
 
       const message = await Message.insert({
         userId: user.id,
@@ -356,7 +356,7 @@ describe('Message model', () => {
     });
 
     it('should insert a message with conversation ID', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
 
       const message = await Message.insert({
         userId: user.id,
@@ -379,7 +379,7 @@ describe('Message model', () => {
 
   describe('Message.getAll', () => {
     it('should return all messages with user email', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       await Message.insert({
         userId: user.id,
         messageContent: 'Test message',
@@ -403,7 +403,7 @@ describe('Message model', () => {
 
   describe('Message.getConversations', () => {
     it('should return conversations with metadata', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       await Message.insert({
         userId: user.id,
         messageContent: 'Test message',
@@ -426,7 +426,7 @@ describe('Message model', () => {
 
   describe('Message.getConversationById', () => {
     it('should return messages for specific conversation', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       const message = await Message.insert({
         userId: user.id,
         messageContent: 'Test message',
@@ -450,7 +450,7 @@ describe('Message model', () => {
 
   describe('Message.getByUserId', () => {
     it('should return messages for specific user', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       await Message.insert({
         userId: user.id,
         messageContent: 'Test message',
@@ -473,7 +473,7 @@ describe('Message model', () => {
 
   describe('Message.getById', () => {
     it('should return specific message by ID', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       const message = await Message.insert({
         userId: user.id,
         messageContent: 'Test message',
@@ -497,7 +497,7 @@ describe('Message model', () => {
 
   describe('Message.markAsRead', () => {
     it('should mark message as read', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       const message = await Message.insert({
         userId: user.id,
         messageContent: 'Test message',
@@ -525,7 +525,7 @@ describe('Message model', () => {
 
   describe('Message.delete', () => {
     it('should delete message', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       const message = await Message.insert({
         userId: user.id,
         messageContent: 'Test message',

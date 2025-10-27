@@ -4,6 +4,10 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 
+jest.mock('../lib/utils/mailer.js', () => ({
+  sendVerificationEmail: jest.fn().mockResolvedValue(),
+}));
+
 const mockUser = {
   firstName: 'Test',
   lastName: 'User',
@@ -14,15 +18,10 @@ const mockUser = {
 const registerAndLogin = async (userProps = {}) => {
   const userToUse = { ...mockUser, ...userProps };
   const password = userToUse.password;
-
-  // Create an "agent" that gives us the ability
-  // to store cookies between requests in a test
   const agent = request.agent(app);
 
-  // Create a user to sign in with
-  const user = await UserService.create(userToUse);
+  const { user } = await UserService.create(userToUse); // destructure new return shape
 
-  // ...then sign in
   const { email } = user;
   await agent.post('/api/v1/users/sessions').send({ email, password });
   return [agent, user];
@@ -38,10 +37,8 @@ describe('user routes', () => {
 
   it('creates a new user', async () => {
     const res = await request(app).post('/api/v1/users').send(mockUser);
-    const { email } = mockUser;
     expect(res.body).toEqual({
-      id: expect.any(String),
-      email,
+      message: 'Account created. Check your email to verify your account.',
     });
   });
 

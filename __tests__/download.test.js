@@ -20,7 +20,7 @@ const registerAndLogin = async (userProps = {}) => {
   const agent = request.agent(app);
 
   // Create a user to sign in with
-  const user = await UserService.create(userToUse);
+  const { user } = await UserService.create(userToUse);
 
   // ...then sign in
   const { email } = user;
@@ -53,9 +53,9 @@ describe('csv file download route', () => {
     expect(csvResp.headers['content-type']).toBe('text/csv; charset=utf-8');
     expect(csvResp.text).toMatchInlineSnapshot(`
       ""created_at","title","description","image_url","category","price"
-      "10/09/2025","Test 1","Test 1","Test 1","Test 1","Test 1"
-      "10/09/2025","Test 2","Test 2","Test 2","Test 2","Test 2"
-      "10/09/2025","Test 3","Test 3","Test 3","Test 3","Test 3""
+      "10/26/2025","Test 1","Test 1","Test 1","Test 1","Test 1"
+      "10/26/2025","Test 2","Test 2","Test 2","Test 2","Test 2"
+      "10/26/2025","Test 3","Test 3","Test 3","Test 3","Test 3""
     `);
   });
 });

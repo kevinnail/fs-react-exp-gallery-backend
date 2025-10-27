@@ -37,7 +37,7 @@ const registerAndLogin = async (userProps = {}) => {
   const password = userToUse.password;
 
   const agent = request.agent(app);
-  const user = await UserService.create(userToUse);
+  const { user } = await UserService.create(userToUse);
   const { email } = user;
   await agent.post('/api/v1/users/sessions').send({ email, password });
   return [agent, user];

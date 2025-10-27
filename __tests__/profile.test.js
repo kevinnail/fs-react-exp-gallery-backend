@@ -41,7 +41,7 @@ const registerAndLogin = async (userProps = {}) => {
   const password = userToUse.password;
 
   const agent = request.agent(app);
-  const user = await UserService.create(userToUse);
+  const { user } = await UserService.create(userToUse);
   const { email } = user;
   await agent.post('/api/v1/users/sessions').send({ email, password });
   return [agent, user];
@@ -278,7 +278,7 @@ describe('Profile model', () => {
 
   describe('Profile.insert', () => {
     it('should insert a new profile', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
 
       const profile = await Profile.insert({
         userId: user.id,
@@ -301,13 +301,13 @@ describe('Profile model', () => {
 
   describe('Profile.getByUserId', () => {
     it('should return null when profile does not exist', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       const profile = await Profile.getByUserId(user.id);
       expect(profile).toBeNull();
     });
 
     it('should return profile when it exists', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       const insertedProfile = await Profile.insert({
         userId: user.id,
         firstName: 'John',
@@ -322,7 +322,7 @@ describe('Profile model', () => {
 
   describe('Profile.updateByUserId', () => {
     it('should update existing profile', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       await Profile.insert({
         userId: user.id,
         firstName: 'John',
@@ -348,7 +348,7 @@ describe('Profile model', () => {
     });
 
     it('should throw error when profile does not exist', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
 
       await expect(
         Profile.updateByUserId(user.id, {
@@ -362,7 +362,7 @@ describe('Profile model', () => {
 
   describe('Profile.upsertByUserId', () => {
     it('should insert new profile when none exists', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
 
       const profile = await Profile.upsertByUserId(user.id, {
         firstName: 'John',
@@ -382,7 +382,7 @@ describe('Profile model', () => {
     });
 
     it('should update existing profile when one exists', async () => {
-      const user = await UserService.create(mockUser);
+      const { user } = await UserService.create(mockUser);
       await Profile.insert({
         userId: user.id,
         firstName: 'John',

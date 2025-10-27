@@ -36,7 +36,7 @@ const mockUser = {
 
 const registerAndLogin = async () => {
   const agent = request.agent(app);
-  const user = await UserService.create(mockUser);
+  const { user } = await UserService.create(mockUser);
   await agent
     .post('/api/v1/users/sessions')
     .send({ email: mockUser.email, password: mockUser.password });
