@@ -103,7 +103,8 @@ CREATE TABLE auction_results (
   final_bid NUMERIC,
   closed_at TIMESTAMP DEFAULT now(),
   closed_reason TEXT NOT NULL,
-  is_paid BOOLEAN DEFAULT FALSE
+  is_paid BOOLEAN DEFAULT FALSE,
+  tracking_number TEXT
 );
 
 CREATE TABLE auction_notifications (

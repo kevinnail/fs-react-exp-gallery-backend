@@ -103,6 +103,41 @@ describe('Auction routes', () => {
     });
   });
 
+  describe('PUT /api/v1/auctions/:id/tracking', () => {
+    it('updates tracking number successfully', async () => {
+      const [agent] = await registerAndLogin(); // admin agent
+
+      // create auction
+      const createRes = await agent.post('/api/v1/auctions').send({
+        auctionDetails: {
+          title: 'Track Me',
+          description: 'desc',
+          startPrice: 10,
+          buyNowPrice: 100,
+          startTime: new Date().toISOString(),
+          endTime: new Date(Date.now() + 1000 * 60).toISOString(),
+        },
+      });
+
+      const auctionId = createRes.body.id;
+
+      // simulate closing auction result manually or call your close logic here
+      await pool.query(
+        `INSERT INTO auction_results (auction_id, winner_id, final_bid,closed_reason) 
+        VALUES ($1, $2, $3, $4)`,
+        [auctionId, 1, 50, 'expired'],
+      );
+
+      const trackingNumber = '9400111899223456789012';
+
+      const res = await agent
+        .put(`/api/v1/auctions/${auctionId}/tracking`)
+        .send({ trackingNumber });
+
+      expect(res.status).toBe(200);
+      expect(res.body.tracking_number).toBe(trackingNumber);
+    });
+  });
   // -----------------------------------------------------------
   describe('POST /api/v1/auctions', () => {
     it('returns 401 when not authenticated', async () => {
