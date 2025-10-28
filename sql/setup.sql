@@ -102,7 +102,8 @@ CREATE TABLE auction_results (
   winner_id INTEGER REFERENCES users_admin(id),
   final_bid NUMERIC,
   closed_at TIMESTAMP DEFAULT now(),
-  closed_reason TEXT NOT NULL
+  closed_reason TEXT NOT NULL,
+  is_paid BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE auction_notifications (
