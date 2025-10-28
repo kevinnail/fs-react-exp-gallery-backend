@@ -53,6 +53,7 @@ jest.mock('../lib/jobs/auctionTimers', () => ({
 }));
 
 const { scheduleAuctionEnd } = require('../lib/jobs/auctionTimers');
+const Auction = require('../lib/models/Auction.js');
 
 describe('Auction routes', () => {
   beforeEach(() => {
@@ -219,6 +220,48 @@ describe('Auction routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.title).toBe('Updated Auction');
+    });
+
+    it('marks an auction as paid and persists the value', async () => {
+      const [agent] = await registerAndLogin();
+
+      // create auction through API
+      const createRes = await agent.post('/api/v1/auctions').send({
+        auctionDetails: {
+          title: 'Payment Test Auction',
+          description: 'Testing isPaid flag',
+          startPrice: 50,
+          buyNowPrice: 100,
+          currentBid: 50,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 3600000),
+        },
+      });
+
+      const auctionId = createRes.body.id;
+
+      // simulate auction closing (cron behavior) using your model
+      await Auction.closeAuction({
+        auctionId,
+        winnerId: 1, // admin user
+        finalBid: 100,
+        closedReason: 'expired',
+      });
+
+      // mark it paid through your public API
+      const paidRes = await agent.put(`/api/v1/auctions/${auctionId}/paid`).send({
+        isPaid: true,
+      });
+
+      expect(paidRes.status).toBe(200);
+      expect(paidRes.body.is_paid || paidRes.body.isPaid).toBe(true);
+
+      // verify persistence using your model, not route response shape
+      const adminView = await Auction.getAllForAdmin();
+      const updated = adminView.find((a) => a.id === auctionId);
+
+      expect(updated).toBeTruthy();
+      expect(updated.isPaid).toBe(true);
     });
   });
 });
