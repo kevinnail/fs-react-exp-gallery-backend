@@ -144,7 +144,7 @@ describe('Bid routes', () => {
         bidAmount: 75,
       });
 
-      expect([200, 204]).toContain(res.status);
+      expect(201).toEqual(res.status);
       expect(global.wsService.emitBidPlaced).toHaveBeenCalled();
     });
 
