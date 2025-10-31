@@ -83,6 +83,7 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
+        showWelcome: expect.any(Boolean),
       });
     });
   });
@@ -114,6 +115,8 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
+
+        showWelcome: expect.any(Boolean),
       });
     });
 
@@ -143,6 +146,8 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/new-image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
+
+        showWelcome: expect.any(Boolean),
       });
     });
   });
@@ -204,6 +209,7 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/new-image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
+        showWelcome: expect.any(Boolean),
       });
     });
 
@@ -233,6 +239,7 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/new-image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
+        showWelcome: expect.any(Boolean),
       });
     });
   });
@@ -295,6 +302,8 @@ describe('Profile model', () => {
         imageUrl: 'https://example.com/image.jpg',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
+
+        showWelcome: expect.any(Boolean),
       });
     });
   });
@@ -344,6 +353,7 @@ describe('Profile model', () => {
         imageUrl: 'https://example.com/new-image.jpg',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
+        showWelcome: expect.any(Boolean),
       });
     });
 
@@ -378,6 +388,7 @@ describe('Profile model', () => {
         imageUrl: 'https://example.com/image.jpg',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
+        showWelcome: expect.any(Boolean),
       });
     });
 
@@ -404,6 +415,7 @@ describe('Profile model', () => {
         imageUrl: 'https://example.com/new-image.jpg',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
+        showWelcome: expect.any(Boolean),
       });
     });
   });
