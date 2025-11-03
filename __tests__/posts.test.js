@@ -219,29 +219,6 @@ describe('admin gallery routes', () => {
     expect(getResp.status).toBe(404);
   });
 
-  //  upload image test //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
-  //   const fakeImage1 = Buffer.from('fake-image-content-1');
-  //   const fakeImage2 = Buffer.from('fake-image-content-2');
-  //   const [agent] = await registerAndLogin();
-
-  //   const formData = new FormData();
-
-  //   formData.append('imageFiles', fakeImage1, 'test-image-1.jpg');
-  //   formData.append('imageFiles', fakeImage2, 'test-image-2.jpg');
-
-  //   const response = await agent
-  //     .post('/api/v1/admin/upload')
-  //     .set(
-  //       'Content-Type',
-  //       `multipart/form-data; boundary=${formData.getBoundary()}`
-  //     )
-  //     .send(formData.getBuffer());
-  //   console.log('response', response.body);
-  //   expect(response.statusCode).toBe(200);
-  // });
-
-  // old test works with local storage ^^^^^^^^^^^^^^^^^^^
   // Test setup
   const mockMulter = {
     array: jest.fn(),
