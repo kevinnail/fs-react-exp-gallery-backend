@@ -49,11 +49,11 @@ if (require.main === module) {
   setupTestDatabase()
     .then(() => {
       // eslint-disable-next-line no-console
-      console.log('🎉 Test database setup complete!');
+      console.log('✅ Test database setup complete!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 Setup failed:', error);
+      console.error('❌ Setup failed:', error);
       process.exit(1);
     });
 }
