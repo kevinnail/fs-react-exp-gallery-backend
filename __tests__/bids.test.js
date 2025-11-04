@@ -294,6 +294,7 @@ describe('Bid routes', () => {
 
   describe(' Cron job for expired auction', () => {
     it('creates a system winner message when auction expires naturally via cron', async () => {
+      // eslint-disable-next-line no-unused-vars
       const [agent, user] = await registerAndLogin();
 
       // create auction ending in the past
