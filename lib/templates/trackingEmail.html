@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; line-height: 1.5">
+    <h2>Thank you for your purchase!</h2>
+    <p>
+      Your package is on its way. You can also check tracking info in your Account page in the Won
+      section.
+    </p>
+    <p>
+      <a
+        href="{{trackingUrl}}"
+        style="
+          background-color: #4caf50;
+          color: white;
+          padding: 5px 20px 5px 10px;
+          text-decoration: none;
+          display: inline-block;
+          height: 70px;
+        "
+      >
+        <img
+          alt="USPS"
+          style="width: 50px; height: 50px; margin: 0.5rem 1rem 0 0.25rem"
+          src="https://stresslessglass.kevinnail.com/usps.png"
+        />
+        USPS Tracking {{trackingNumber}}
+      </a>
+    </p>
+    `
+    <p>Let me know if you have any problems or questions, thanks again!</p>
+    <p>-Kevin</p>
+
+    <img
+      style="width: 50px; margin-top: 3rem"
+      src="https://stresslessglass.kevinnail.com/logo-sq.png"
+      alt="'Stress Less Glass logo"
+    />
+    <h4 style="margin: 0">Kevin Nail</h4>
+    <span style="display: block"><a href="{{homePageUrl}}">Stress Less Glass</a></span>
+    <span style="display: block"><a href="{{instagramUrl}}">Instagram</a></span>
+  </body>
+</html>
