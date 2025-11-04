@@ -46,6 +46,7 @@ const registerAndLogin = async (userProps = {}) => {
 // mock websocket + auction scheduler
 global.wsService = {
   emitAuctionCreated: jest.fn(),
+  emitTrackingInfo: jest.fn(),
 };
 
 jest.mock('../lib/jobs/auctionTimers', () => ({
@@ -104,7 +105,7 @@ describe('Auction routes', () => {
   });
 
   describe('PUT /api/v1/auctions/:id/tracking', () => {
-    it('updates tracking number successfully', async () => {
+    it.only('updates tracking number successfully', async () => {
       const [agent] = await registerAndLogin(); // admin agent
 
       // create auction
@@ -133,6 +134,8 @@ describe('Auction routes', () => {
       const res = await agent
         .put(`/api/v1/auctions/${auctionId}/tracking`)
         .send({ trackingNumber });
+
+      console.log('res', res.body);
 
       expect(res.status).toBe(200);
       expect(res.body.tracking_number).toBe(trackingNumber);
