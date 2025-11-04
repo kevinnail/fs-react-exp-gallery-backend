@@ -3,6 +3,10 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
+const Message = require('../lib/models/Message.js');
+const { completeAuction } = require('../lib/jobs/auctionTimers.js');
+const Auction = require('../lib/models/Auction.js');
+const Bid = require('../lib/models/Bid.js');
 
 // mock AWS SDK S3 client — identical format as other suites
 jest.mock('@aws-sdk/client-s3', () => {
@@ -30,6 +34,14 @@ global.wsService = {
   emitOutBidNotification: jest.fn(),
   emitAuctionBIN: jest.fn(),
   emitAuctionCreated: jest.fn(),
+  emitNewMessage: jest.fn(),
+  emitAuctionEnded: jest.fn(),
+  emitUserWon: jest.fn(),
+  io: {
+    to: () => ({
+      emit: jest.fn(),
+    }),
+  },
 };
 
 // standard mock user and helper
@@ -249,6 +261,71 @@ describe('Bid routes', () => {
       expect(res.status).toBe(200);
       expect(global.wsService.emitAuctionBIN).toHaveBeenCalled();
       expect(res.body).toHaveProperty('message', 'Auction purchased successfully');
+    });
+    it('creates a winner system message for the buyer on BIN', async () => {
+      const [agent, user] = await registerAndLogin();
+
+      const auctionRes = await agent.post('/api/v1/auctions').send({
+        auctionDetails: {
+          title: 'BIN msg test',
+          description: 'tests BIN conversation message',
+          startPrice: 10,
+          buyNowPrice: 20,
+          currentBid: 10,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 3600000),
+        },
+      });
+      const auctionId = auctionRes.body.id;
+
+      await agent.post('/api/v1/bids/buy-it-now').send({
+        auctionId,
+        userId: user.id,
+      });
+
+      const messages = await Message.getByUserId(user.id);
+      const latest = messages[0];
+
+      expect(latest).toBeDefined();
+      expect(latest.isFromAdmin).toBe(true);
+      expect(latest.messageContent).toMatch(/Congrats on winning|Congrats on the win/i);
+    });
+  });
+
+  describe(' Cron job for expired auction', () => {
+    it('creates a system winner message when auction expires naturally via cron', async () => {
+      // eslint-disable-next-line no-unused-vars
+      const [agent, user] = await registerAndLogin();
+
+      // create auction ending in the past
+      const auction = await Auction.insert({
+        title: 'Cron Expire Test',
+        description: 'testing cron expiration message',
+        startPrice: 10,
+        buyNowPrice: 50,
+        currentBid: 10,
+        startTime: new Date(),
+        endTime: new Date(Date.now() - 2000), // already expired
+      });
+
+      // place a bid so there's a winner
+      await Bid.insert({
+        auctionId: auction.id,
+        userId: user.id,
+        bidAmount: 30,
+      });
+
+      // trigger cron finalization manually
+      await completeAuction(auction.id);
+
+      // fetch messages via model (decrypts automatically)
+      const userMessages = await Message.getByUserId(user.id);
+
+      const latest = userMessages[0];
+
+      expect(latest).toBeDefined();
+      expect(latest.isFromAdmin).toBe(true);
+      expect(latest.messageContent).toMatch(/Congrats on the win/i);
     });
   });
 });
