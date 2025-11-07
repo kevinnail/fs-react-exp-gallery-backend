@@ -105,7 +105,7 @@ describe('Auction routes', () => {
   });
 
   describe('PUT /api/v1/auctions/:id/tracking', () => {
-    it.only('updates tracking number successfully', async () => {
+    it('updates tracking number successfully', async () => {
       const [agent] = await registerAndLogin(); // admin agent
 
       // create auction
