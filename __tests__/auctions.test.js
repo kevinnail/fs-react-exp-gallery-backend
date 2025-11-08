@@ -47,6 +47,7 @@ const registerAndLogin = async (userProps = {}) => {
 global.wsService = {
   emitAuctionCreated: jest.fn(),
   emitTrackingInfo: jest.fn(),
+  emitAuctionPaid: jest.fn(),
 };
 
 jest.mock('../lib/jobs/auctionTimers', () => ({
@@ -290,6 +291,7 @@ describe('Auction routes', () => {
       const paidRes = await agent.put(`/api/v1/auctions/${auctionId}/paid`).send({
         isPaid: true,
       });
+      console.log('paidRes', paidRes.body);
 
       expect(paidRes.status).toBe(200);
       expect(paidRes.body.is_paid || paidRes.body.isPaid).toBe(true);
