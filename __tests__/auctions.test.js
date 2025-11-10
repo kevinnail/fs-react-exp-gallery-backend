@@ -43,6 +43,12 @@ const registerAndLogin = async (userProps = {}) => {
   return [agent, user];
 };
 
+jest.mock('../lib/utils/mailer.js', () => {
+  return {
+    sendTrackingEmail: jest.fn().mockResolvedValue(),
+  };
+});
+
 // mock websocket + auction scheduler
 global.wsService = {
   emitAuctionCreated: jest.fn(),
@@ -135,8 +141,6 @@ describe('Auction routes', () => {
       const res = await agent
         .put(`/api/v1/auctions/${auctionId}/tracking`)
         .send({ trackingNumber });
-
-      console.log('res', res.body);
 
       expect(res.status).toBe(200);
       expect(res.body.tracking_number).toBe(trackingNumber);
@@ -291,7 +295,6 @@ describe('Auction routes', () => {
       const paidRes = await agent.put(`/api/v1/auctions/${auctionId}/paid`).send({
         isPaid: true,
       });
-      console.log('paidRes', paidRes.body);
 
       expect(paidRes.status).toBe(200);
       expect(paidRes.body.is_paid || paidRes.body.isPaid).toBe(true);
