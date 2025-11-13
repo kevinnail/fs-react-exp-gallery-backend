@@ -71,6 +71,9 @@ describe('Profile routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
+        showWelcome: true,
+        sendEmailNotifications: true,
+        lastAuctionEmailedAt: null,
       });
 
       const resGet = await agent.get('/api/v1/profile');
@@ -84,6 +87,7 @@ describe('Profile routes', () => {
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: expect.any(Boolean),
       });
     });
   });
@@ -104,9 +108,13 @@ describe('Profile routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
+        sendEmailNotifications: true,
+        updatedAt: expect.any(String),
+        showWelcome: expect.any(Boolean),
       });
 
       expect(res.status).toBe(200);
+
       expect(res.body).toEqual({
         id: expect.any(String),
         userId: user.id,
@@ -115,8 +123,8 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
-
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: expect.any(Boolean),
       });
     });
 
@@ -129,12 +137,16 @@ describe('Profile routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
+        updatedAt: expect.any(String),
+        sendEmailNotifications: true,
       });
 
       const res = await agent.put('/api/v1/profile').send({
         firstName: 'Jane',
         lastName: 'Smith',
         imageUrl: 'https://example.com/new-image.jpg',
+        updatedAt: expect.any(String),
+        sendEmailNotifications: false,
       });
 
       expect(res.status).toBe(200);
@@ -146,8 +158,8 @@ describe('Profile routes', () => {
         imageUrl: 'https://example.com/new-image.jpg',
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
-
-        showWelcome: expect.any(Boolean),
+        showWelcome: true,
+        sendEmailNotifications: false,
       });
     });
   });
@@ -198,6 +210,7 @@ describe('Profile routes', () => {
         image_url: 'https://example.com/new-image.jpg',
         firstName: 'John',
         lastName: 'Doe',
+        sendEmailNotifications: true,
       });
 
       expect(res.status).toBe(200);
@@ -210,6 +223,7 @@ describe('Profile routes', () => {
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: true,
       });
     });
 
@@ -222,11 +236,13 @@ describe('Profile routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
+        sendEmailNotifications: true,
       });
 
       const res = await agent.post('/api/v1/profile/images').send({
         image_url: 'https://example.com/new-image.jpg',
         firstName: 'Jane',
+        sendEmailNotifications: true,
         lastName: 'Smith',
       });
 
@@ -240,6 +256,7 @@ describe('Profile routes', () => {
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: true,
       });
     });
   });
@@ -292,6 +309,7 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
+        sendEmailNotifications: true,
       });
 
       expect(profile).toEqual({
@@ -302,8 +320,8 @@ describe('Profile model', () => {
         imageUrl: 'https://example.com/image.jpg',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
-
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: true,
       });
     });
   });
@@ -322,6 +340,7 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
+        sendEmailNotifications: true,
       });
 
       const profile = await Profile.getByUserId(user.id);
@@ -337,12 +356,14 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
+        sendEmailNotifications: true,
       });
 
       const updatedProfile = await Profile.updateByUserId(user.id, {
         firstName: 'Jane',
         lastName: 'Smith',
         imageUrl: 'https://example.com/new-image.jpg',
+        sendEmailNotifications: true,
       });
 
       expect(updatedProfile).toEqual({
@@ -354,6 +375,7 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: true,
       });
     });
 
@@ -378,6 +400,7 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
+        sendEmailNotifications: true,
       });
 
       expect(profile).toEqual({
@@ -389,6 +412,7 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: expect.any(Boolean),
       });
     });
 
@@ -399,12 +423,14 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
+        sendEmailNotifications: true,
       });
 
       const updatedProfile = await Profile.upsertByUserId(user.id, {
         firstName: 'Jane',
         lastName: 'Smith',
         imageUrl: 'https://example.com/new-image.jpg',
+        sendEmailNotifications: true,
       });
 
       expect(updatedProfile).toEqual({
@@ -416,6 +442,7 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
+        sendEmailNotifications: true,
       });
     });
   });

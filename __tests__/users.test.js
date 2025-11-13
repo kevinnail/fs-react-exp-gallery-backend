@@ -4,6 +4,7 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const User = require('../lib/models/User.js');
+const { sendVerificationEmail } = require('../lib/utils/mailer.js');
 
 jest.mock('../lib/utils/mailer.js', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue(),
@@ -39,6 +40,8 @@ describe('user routes', () => {
     expect(res.body).toEqual({
       message: 'Account created. Check your email to verify your account.',
     });
+
+    expect(sendVerificationEmail).toHaveBeenCalled();
   });
 
   it('signs in an existing user', async () => {
