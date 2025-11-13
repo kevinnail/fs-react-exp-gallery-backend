@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; line-height: 1.5">
+    <h2>New Auction Posted!</h2>
+
+    <p>A new piece has just been listed.</p>
+
+    <h3 style="margin-bottom: 0.5rem">{{title}}</h3>
+    <p style="margin-top: 0.25rem">{{description}}</p>
+
+    <p>
+      <a
+        href="{{auctionUrl}}"
+        style="
+          background-color: #4caf50;
+          color: white;
+          padding: 10px 20px;
+          text-decoration: none;
+          display: inline-block;
+          border-radius: 4px;
+          font-weight: bold;
+        "
+      >
+        View Auction
+      </a>
+    </p>
+
+    <div style="margin: 1.5rem 0">
+      <img
+        src="{{imageUrl}}"
+        alt="auction image"
+        style="width: 250px; height: auto; border-radius: 6px; border: 1px solid #ddd"
+      />
+    </div>
+
+    <p>Good luck and happy bidding.</p>
+
+    <p>-Kevin</p>
+
+    <img
+      style="width: 50px; margin-top: 3rem"
+      src="https://stresslessglass.kevinnail.com/logo-sq.png"
+      alt="Stress Less Glass logo"
+    />
+    <h4 style="margin: 0">Kevin Nail</h4>
+    <span style="display: block"><a href="{{homePageUrl}}">Stress Less Glass</a></span>
+    <span style="display: block"><a href="{{instagramUrl}}">Instagram</a></span>
+  </body>
+</html>

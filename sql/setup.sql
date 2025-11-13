@@ -52,7 +52,9 @@ CREATE TABLE profiles (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE,
   UNIQUE(user_id),
-  show_welcome BOOLEAN NOT NULL DEFAULT TRUE
+  show_welcome BOOLEAN NOT NULL DEFAULT TRUE,
+  send_email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  last_auction_email_at TIMESTAMP NULL
 );
 
 CREATE TABLE messages (

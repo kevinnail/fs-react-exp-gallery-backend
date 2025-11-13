@@ -4,6 +4,11 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const FormData = require('form-data');
+const { notifyUsersNewAuction } = require('../lib/services/auctionEmailService.js');
+
+jest.mock('../lib/utils/mailer.js', () => ({
+  sendTrackingEmail: jest.fn().mockResolvedValue(),
+}));
 
 // mock AWS SDK S3 client
 jest.mock('@aws-sdk/client-s3', () => {
@@ -43,9 +48,9 @@ const registerAndLogin = async (userProps = {}) => {
   return [agent, user];
 };
 
-jest.mock('../lib/utils/mailer.js', () => {
+jest.mock('../lib/services/auctionEmailService.js', () => {
   return {
-    sendTrackingEmail: jest.fn().mockResolvedValue(),
+    notifyUsersNewAuction: jest.fn().mockResolvedValue(),
   };
 });
 
@@ -62,6 +67,7 @@ jest.mock('../lib/jobs/auctionTimers', () => ({
 
 const { scheduleAuctionEnd } = require('../lib/jobs/auctionTimers');
 const Auction = require('../lib/models/Auction.js');
+const { sendTrackingEmail } = require('../lib/utils/mailer.js');
 
 describe('Auction routes', () => {
   beforeEach(() => {
@@ -142,6 +148,7 @@ describe('Auction routes', () => {
         .put(`/api/v1/auctions/${auctionId}/tracking`)
         .send({ trackingNumber });
 
+      expect(sendTrackingEmail).toHaveBeenCalled();
       expect(res.status).toBe(200);
       expect(res.body.tracking_number).toBe(trackingNumber);
     });
@@ -177,6 +184,7 @@ describe('Auction routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('id');
       expect(scheduleAuctionEnd).toHaveBeenCalled();
+      expect(notifyUsersNewAuction).toHaveBeenCalled();
       expect(global.wsService.emitAuctionCreated).toHaveBeenCalled();
     });
   });
@@ -286,7 +294,7 @@ describe('Auction routes', () => {
       // simulate auction closing (cron behavior) using your model
       await Auction.closeAuction({
         auctionId,
-        winnerId: 1, // admin user
+        winnerId: process.env.ADMIN_ID,
         finalBid: 100,
         closedReason: 'expired',
       });
