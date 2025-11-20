@@ -128,11 +128,11 @@ CREATE TABLE gallery_post_sales (
   buyer_id INTEGER NOT NULL REFERENCES users_admin(id),
   price NUMERIC(10,2) NOT NULL,
   tracking_number TEXT,
+  is_paid BOOLEAN NOT NULL DEFAULT false,
+  paid_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
-
-
 
 
 
