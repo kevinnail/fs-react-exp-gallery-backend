@@ -80,6 +80,8 @@ describe('admin gallery routes', () => {
       hide: expect.any(Boolean),
       selling_link: null,
       sold: expect.any(Boolean),
+      originalPrice: null,
+      discountedPrice: null,
     });
   });
 
@@ -129,6 +131,8 @@ describe('admin gallery routes', () => {
       hide: expect.any(Boolean),
       sold: true,
       selling_link: null,
+      originalPrice: null,
+      discountedPrice: null,
     });
     expect(resp2.status).toBe(200);
     expect(resp2.body).toEqual({
@@ -145,6 +149,8 @@ describe('admin gallery routes', () => {
       hide: expect.any(Boolean),
       sold: false,
       selling_link: null,
+      originalPrice: null,
+      discountedPrice: null,
     });
   });
 
@@ -177,6 +183,8 @@ describe('admin gallery routes', () => {
       selling_link: null,
       sold: false,
       hide: false,
+      originalPrice: null,
+      discountedPrice: null,
     });
   });
 
@@ -373,6 +381,8 @@ describe('admin gallery routes', () => {
         title: 'Test 1',
         sold: false,
         selling_link: null,
+        originalPrice: null,
+        discountedPrice: null,
       },
       {
         author_id: '1',
@@ -388,6 +398,8 @@ describe('admin gallery routes', () => {
         title: 'Test 2',
         sold: false,
         selling_link: null,
+        originalPrice: null,
+        discountedPrice: null,
       },
       {
         author_id: '1',
@@ -403,6 +415,8 @@ describe('admin gallery routes', () => {
         title: 'Test 3',
         sold: false,
         selling_link: null,
+        originalPrice: null,
+        discountedPrice: null,
       },
     ]);
   });
@@ -424,6 +438,8 @@ describe('admin gallery routes', () => {
       hide: false,
       selling_link: null,
       sold: false,
+      originalPrice: null,
+      discountedPrice: null,
     });
   });
 

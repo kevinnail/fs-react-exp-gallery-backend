@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS auctions CASCADE;
 DROP TABLE IF EXISTS auction_results CASCADE;
 DROP TABLE IF EXISTS bids CASCADE;
 DROP TABLE IF EXISTS auction_notifications CASCADE;
+DROP TABLE IF EXISTS gallery_post_sales CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -27,10 +28,14 @@ CREATE TABLE gallery_posts (
   price VARCHAR,
   author_id BIGINT,
   public_id VARCHAR,
- num_imgs BIGINT,
- sold BOOLEAN DEFAULT FALSE,
- hide BOOLEAN DEFAULT FALSE,
- selling_link VARCHAR
+  num_imgs BIGINT,
+  sold BOOLEAN DEFAULT FALSE,
+  hide BOOLEAN DEFAULT FALSE,
+  selling_link VARCHAR,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  deleted_at TIMESTAMP,
+  original_price VARCHAR,
+  discounted_price VARCHAR
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
@@ -119,8 +124,17 @@ CREATE TABLE auction_notifications (
   is_read BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-
-
+CREATE TABLE gallery_post_sales (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER NOT NULL REFERENCES gallery_posts(id),
+  buyer_id INTEGER NOT NULL REFERENCES users_admin(id),
+  price NUMERIC(10,2) NOT NULL,
+  tracking_number TEXT,
+  is_paid BOOLEAN NOT NULL DEFAULT false,
+  paid_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 
 
 
