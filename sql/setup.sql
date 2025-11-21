@@ -33,7 +33,9 @@ CREATE TABLE gallery_posts (
   hide BOOLEAN DEFAULT FALSE,
   selling_link VARCHAR,
   is_deleted BOOLEAN DEFAULT FALSE,
-  deleted_at TIMESTAMP;
+  deleted_at TIMESTAMP,
+  original_price VARCHAR,
+  discounted_price VARCHAR
   -- FOREIGN KEY (author_id) REFERENCES users_admin(id)
 );
 
