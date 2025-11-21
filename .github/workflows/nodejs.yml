@@ -22,7 +22,7 @@ jobs:
           SALT_ROUNDS: ${{ secrets.SALT_ROUNDS }}
           COOKIE_NAME: ${{ secrets.COOKIE_NAME }}
           ALLOWED_EMAILS: ${{secrets.ALLOWED_EMAILS}}
-      - run: npm test -- -u --runInBand --detectOpenHandles steps --forceExit
+      - run: npm test -- -u --runInBand --detectOpenHandles --forceExit
 
         env:
           CI: true
