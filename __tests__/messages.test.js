@@ -416,6 +416,8 @@ describe('Message model', () => {
         conversation_id: expect.any(String),
         user_id: user.id,
         email: user.email,
+        first_name: null,
+        last_name: null,
         last_message_at: expect.any(Date),
         message_count: '1',
         unread_count: '1',
