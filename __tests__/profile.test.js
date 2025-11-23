@@ -62,7 +62,7 @@ describe('Profile routes', () => {
       const [agent] = await registerAndLogin();
       const res = await agent.get('/api/v1/profile');
       expect(res.status).toBe(200);
-      expect(res.body).toBeNull();
+      expect(res.body).toEqual({ profile: null, address: null });
     });
 
     it('should return user profile when authenticated and profile exists', async () => {
@@ -79,15 +79,18 @@ describe('Profile routes', () => {
       const resGet = await agent.get('/api/v1/profile');
       expect(resGet.status).toBe(200);
       expect(resGet.body).toEqual({
-        id: expect.any(String),
-        userId: user.id,
-        firstName: 'John',
-        lastName: 'Doe',
-        imageUrl: 'https://example.com/image.jpg',
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
-        showWelcome: expect.any(Boolean),
-        sendEmailNotifications: expect.any(Boolean),
+        profile: {
+          id: expect.any(String),
+          userId: user.id,
+          firstName: 'John',
+          lastName: 'Doe',
+          imageUrl: 'https://example.com/image.jpg',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          showWelcome: expect.any(Boolean),
+          sendEmailNotifications: expect.any(Boolean),
+        },
+        address: null,
       });
     });
   });
@@ -116,15 +119,18 @@ describe('Profile routes', () => {
       expect(res.status).toBe(200);
 
       expect(res.body).toEqual({
-        id: expect.any(String),
-        userId: user.id,
-        firstName: 'John',
-        lastName: 'Doe',
-        imageUrl: 'https://example.com/image.jpg',
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
-        showWelcome: expect.any(Boolean),
-        sendEmailNotifications: expect.any(Boolean),
+        profile: {
+          id: expect.any(String),
+          userId: user.id,
+          firstName: 'John',
+          lastName: 'Doe',
+          imageUrl: 'https://example.com/image.jpg',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          showWelcome: expect.any(Boolean),
+          sendEmailNotifications: expect.any(Boolean),
+        },
+        address: null,
       });
     });
 
@@ -151,15 +157,18 @@ describe('Profile routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual({
-        id: expect.any(String),
-        userId: user.id,
-        firstName: 'Jane',
-        lastName: 'Smith',
-        imageUrl: 'https://example.com/new-image.jpg',
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
-        showWelcome: true,
-        sendEmailNotifications: false,
+        profile: {
+          id: expect.any(String),
+          userId: user.id,
+          firstName: 'Jane',
+          lastName: 'Smith',
+          imageUrl: 'https://example.com/new-image.jpg',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          showWelcome: true,
+          sendEmailNotifications: false,
+        },
+        address: null,
       });
     });
   });
