@@ -136,7 +136,7 @@ describe('Profile with Address Integration', () => {
   });
 
   it('should update profile without address when no address fields provided', async () => {
-    const [agent, user] = await registerAndLogin();
+    const [agent] = await registerAndLogin();
 
     const res = await agent.put('/api/v1/profile').send({
       firstName: 'Jane',
@@ -204,7 +204,6 @@ describe('Profile with Address Integration', () => {
       countryCode: 'US',
       sendEmailNotifications: true,
     });
-    console.log('res.body', res.body);
 
     expect(res.status).toBe(200);
     expect(res.body.address.city).toBe('Eugene');
