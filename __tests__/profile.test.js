@@ -116,15 +116,18 @@ describe('Profile routes', () => {
       expect(res.status).toBe(200);
 
       expect(res.body).toEqual({
-        id: expect.any(String),
-        userId: user.id,
-        firstName: 'John',
-        lastName: 'Doe',
-        imageUrl: 'https://example.com/image.jpg',
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
-        showWelcome: expect.any(Boolean),
-        sendEmailNotifications: expect.any(Boolean),
+        profile: {
+          id: expect.any(String),
+          userId: user.id,
+          firstName: 'John',
+          lastName: 'Doe',
+          imageUrl: 'https://example.com/image.jpg',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          showWelcome: expect.any(Boolean),
+          sendEmailNotifications: expect.any(Boolean),
+        },
+        address: null,
       });
     });
 
@@ -151,15 +154,18 @@ describe('Profile routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual({
-        id: expect.any(String),
-        userId: user.id,
-        firstName: 'Jane',
-        lastName: 'Smith',
-        imageUrl: 'https://example.com/new-image.jpg',
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
-        showWelcome: true,
-        sendEmailNotifications: false,
+        profile: {
+          id: expect.any(String),
+          userId: user.id,
+          firstName: 'Jane',
+          lastName: 'Smith',
+          imageUrl: 'https://example.com/new-image.jpg',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          showWelcome: true,
+          sendEmailNotifications: false,
+        },
+        address: null,
       });
     });
   });
