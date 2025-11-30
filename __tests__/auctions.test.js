@@ -149,6 +149,8 @@ describe('Auction routes', () => {
         .send({ trackingNumber });
 
       expect(sendTrackingEmail).toHaveBeenCalled();
+      // websocket emission asserted
+      expect(global.wsService.emitTrackingInfo).toHaveBeenCalled();
       expect(res.status).toBe(200);
       expect(res.body.tracking_number).toBe(trackingNumber);
     });
@@ -306,6 +308,8 @@ describe('Auction routes', () => {
 
       expect(paidRes.status).toBe(200);
       expect(paidRes.body.is_paid || paidRes.body.isPaid).toBe(true);
+      // websocket emission asserted
+      expect(global.wsService.emitAuctionPaid).toHaveBeenCalled();
 
       // verify persistence using your model, not route response shape
       const adminView = await Auction.getAllForAdmin();

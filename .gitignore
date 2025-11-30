@@ -4,3 +4,5 @@ dist
 .DS_Store
 .vscode
 /coverage
+# Private deploy notes (do not commit)
+docs/DEPLOY-CHECKLIST-*.md

@@ -251,3 +251,71 @@ io.on('connection', (socket) => {
 - File sharing via WebSocket
 - Push notifications
 - Message encryption
+
+## Sales (Non-Auction) Real-Time Events
+
+These events are strictly for gallery post sales and are intentionally distinct from auction events to avoid cross-talk.
+
+### Event Names
+
+- `sale-paid` – Fired when an admin toggles a sale's paid status.
+- `sale-tracking-info` – Fired when tracking information is saved/updated for a sale.
+- `sale-created` – Fired immediately after the admin creates a new sale record.
+
+### Payload Shapes
+
+```json
+// sale-paid
+{
+  "type": "sale",
+  "saleId": 123,
+  "postId": 45,
+  "userId": 67,
+  "isPaid": true
+}
+
+// sale-tracking-info
+{
+  "type": "sale",
+  "saleId": 123,
+  "postId": 45,
+  "userId": 67,
+  "trackingNumber": "TRACK123456"
+}
+
+// sale-created
+{
+  "type": "sale",
+  "saleId": 123,
+  "postId": 45,
+  "userId": 67,
+  "price": "99.99",
+  "trackingNumber": null,
+  "isPaid": false
+}
+```
+
+### Emission Targets
+
+- `user_${userId}` – Always notified (the purchaser).
+- `admin_room` – Mirrors updates across concurrent admin sessions.
+
+### Backend Emission Points
+
+- `PUT /api/v1/admin/pay-status/:id` → emits `sale-paid` after DB update.
+- `PUT /api/v1/admin/:id/tracking` → emits `sale-tracking-info` after DB update.
+- `POST /api/v1/admin/sales` → emits `sale-created` after DB insert.
+
+### Client Handling Suggestions
+
+- AdminSales & UserSales components: update sale objects in-place when identifiers are present; fallback to re-fetch if missing.
+- PaymentDueSummary: subscribe to `sale-paid` and recompute outstanding totals when received.
+- Tracking display: listen for `sale-tracking-info` and surface tracking links immediately.
+- New sale insertion: on `sale-created`, prepend (or sorted insert) into existing sales list if not already present; if list size mismatch or missing identifiers, re-fetch.
+
+### Notes
+
+- These events are deliberately not overloaded onto existing auction event names.
+- Both `saleId` and `postId` are included to maximize client-side matching flexibility.
+- If future enrichment is needed (e.g. buyer name), extend payloads; keep `type: 'sale'` for simple discrimination.
+- `sale-created` provides minimal fields; front end may optimistically display and later hydrate extra joined data if required.

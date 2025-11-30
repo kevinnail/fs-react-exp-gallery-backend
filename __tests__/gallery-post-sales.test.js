@@ -6,6 +6,16 @@ const UserService = require('../lib/services/UserService');
 const GalleryPostSale = require('../lib/models/GalleryPostSale');
 const Profile = require('../lib/models/Profile');
 
+// Mock websocket service for sales events
+global.wsService = {
+  emitSaleCreated: jest.fn(),
+  emitSalePaid: jest.fn(),
+  emitSaleTrackingInfo: jest.fn(),
+  io: {
+    to: () => ({ emit: jest.fn() }),
+  },
+};
+
 const mockUser = {
   email: 'test@example.com',
   password: '12345',
@@ -75,6 +85,16 @@ describe('Gallery Post Sales routes', () => {
         created_at: expect.any(String),
         is_paid: false,
         paid_at: null,
+      });
+
+      // websocket emission asserted
+      expect(global.wsService.emitSaleCreated).toHaveBeenCalled();
+      const emittedPayload = global.wsService.emitSaleCreated.mock.calls[0][0];
+      expect(emittedPayload).toMatchObject({
+        type: 'sale',
+        saleId: resp.body.id,
+        postId: resp.body.post_id,
+        userId: resp.body.buyer_id,
       });
     });
 
@@ -255,6 +275,9 @@ describe('Gallery Post Sales routes', () => {
         is_paid: true,
         paid_at: expect.any(String),
       });
+
+      // websocket emission asserted
+      expect(global.wsService.emitSalePaid).toHaveBeenCalled();
     });
 
     it('should update sale to unpaid status and clear paid_at', async () => {
@@ -335,6 +358,9 @@ describe('Gallery Post Sales routes', () => {
         is_paid: false,
         paid_at: null,
       });
+
+      // websocket emission asserted
+      expect(global.wsService.emitSaleTrackingInfo).toHaveBeenCalled();
     });
 
     it('should return 400 when trackingNumber is missing', async () => {
