@@ -74,6 +74,7 @@ describe('Profile routes', () => {
         showWelcome: true,
         sendEmailNotifications: true,
         lastAuctionEmailedAt: null,
+        lastMessageEmailAt: null,
       });
 
       const resGet = await agent.get('/api/v1/profile');
@@ -89,6 +90,7 @@ describe('Profile routes', () => {
           updatedAt: expect.any(String),
           showWelcome: expect.any(Boolean),
           sendEmailNotifications: expect.any(Boolean),
+          lastMessageEmailAt: null,
         },
         address: null,
       });
@@ -129,6 +131,7 @@ describe('Profile routes', () => {
           updatedAt: expect.any(String),
           showWelcome: expect.any(Boolean),
           sendEmailNotifications: expect.any(Boolean),
+          lastMessageEmailAt: null,
         },
         address: null,
       });
@@ -167,6 +170,7 @@ describe('Profile routes', () => {
           updatedAt: expect.any(String),
           showWelcome: true,
           sendEmailNotifications: false,
+          lastMessageEmailAt: null,
         },
         address: null,
       });
@@ -233,6 +237,7 @@ describe('Profile routes', () => {
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
         sendEmailNotifications: true,
+        lastMessageEmailAt: null,
       });
     });
 
@@ -266,6 +271,7 @@ describe('Profile routes', () => {
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
         sendEmailNotifications: true,
+        lastMessageEmailAt: null,
       });
     });
   });
@@ -331,6 +337,7 @@ describe('Profile model', () => {
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
         sendEmailNotifications: true,
+        lastMessageEmailAt: null,
       });
     });
   });
@@ -385,6 +392,7 @@ describe('Profile model', () => {
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
         sendEmailNotifications: true,
+        lastMessageEmailAt: null,
       });
     });
 
@@ -422,6 +430,7 @@ describe('Profile model', () => {
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
         sendEmailNotifications: expect.any(Boolean),
+        lastMessageEmailAt: null,
       });
     });
 
@@ -452,6 +461,7 @@ describe('Profile model', () => {
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
         sendEmailNotifications: true,
+        lastMessageEmailAt: null,
       });
     });
   });
