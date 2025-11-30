@@ -130,4 +130,63 @@ describe('user routes', () => {
     const verifiedUser = await User.getByEmail(user.email);
     expect(verifiedUser.isVerified).toBe(true);
   });
+
+  it('returns 403 with EMAIL_NOT_VERIFIED code when signing in before verification (non-test env)', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+    const uniqueEmail = 'unverified-flow@example.com';
+    const { user } = await UserService.create({ email: uniqueEmail, password: 'pass123' });
+    expect(user.isVerified).toBe(false);
+    const res = await request(app)
+      .post('/api/v1/users/sessions')
+      .send({ email: uniqueEmail, password: 'pass123' });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('EMAIL_NOT_VERIFIED');
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  it('increments verification token version and invalidates old token after resend', async () => {
+    const email = 'resend1@example.com';
+    const { verifyToken } = await UserService.create({ email, password: 'pass123' });
+    const firstUser = await User.getByEmail(email);
+    expect(firstUser.verificationTokenVersion).toBe(1);
+
+    // Resend via service to get new token (increments version)
+    const { verifyToken: newToken } = await UserService.resendVerification({ email });
+    const updatedUser = await User.getByEmail(email);
+    expect(updatedUser.verificationTokenVersion).toBe(2);
+
+    // Old token should now be invalidated
+    const oldRes = await request(app).get(`/api/v1/users/verify?token=${verifyToken}`);
+    expect(oldRes.status).toBe(302);
+    expect(oldRes.headers.location).toContain('verify=false');
+    expect(oldRes.headers.location).toContain('TOKEN_INVALIDATED');
+
+    // New token should work
+    const newRes = await request(app).get(`/api/v1/users/verify?token=${newToken}`);
+    expect(newRes.status).toBe(302);
+    expect(newRes.headers.location).toContain('verify=true');
+  });
+
+  it('resend verification route increments version but returns generic message', async () => {
+    const email = 'resend2@example.com';
+    await UserService.create({ email, password: 'abc123' });
+    const before = await User.getByEmail(email);
+    expect(before.verificationTokenVersion).toBe(1);
+    const res = await request(app).post('/api/v1/users/resend-verification').send({ email });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatch(/If an account exists/i);
+    const after = await User.getByEmail(email);
+    expect(after.verificationTokenVersion).toBe(2);
+  });
+
+  it('rate limits resend verification after 3 attempts (per-email only)', async () => {
+    const email = 'ratelimit@example.com';
+    for (let i = 0; i < 3; i++) {
+      const r = await request(app).post('/api/v1/users/resend-verification').send({ email });
+      expect(r.status).toBe(200);
+    }
+    const fourth = await request(app).post('/api/v1/users/resend-verification').send({ email });
+    expect(fourth.status).toBe(429);
+  });
 });
