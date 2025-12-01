@@ -54,6 +54,61 @@ describe('admin gallery routes', () => {
     pool.end();
   });
 
+  it('DELETE /api/v1/admin/:id should delete a post', async () => {
+    // First, create a new post using Post.postNewPost() method
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'test title',
+      description: 'test description',
+      image_url: 'test image url',
+      category: 'test category',
+      price: 'test price',
+      author_id: 1,
+    });
+    expect(resp.status).toBe(200);
+
+    // Get the ID of the newly created post
+    const postId = resp.body.id;
+
+    // Delete the post
+    const deleteResp = await agent.delete(`/api/v1/admin/${postId}`);
+    expect(deleteResp.status).toBe(200);
+
+    // Try to get the deleted post
+    const getResp = await agent.get(`/api/v1/posts/${postId}`);
+    expect(getResp.status).toBe(404);
+  });
+
+  it('PATCH /api/v1/admin/delete/:id should soft delete a post', async () => {
+    const [agent] = await registerAndLogin();
+    // Create a new post
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'soft delete test',
+      description: 'soft delete desc',
+      image_url: 'soft delete img',
+      category: 'soft delete cat',
+      price: 'soft delete price',
+      author_id: 1,
+    });
+    expect(resp.status).toBe(200);
+    const postId = resp.body.id;
+
+    // Soft delete the post
+    const patchResp = await agent.patch(`/api/v1/admin/delete/${postId}`);
+    expect(patchResp.status).toBe(200);
+    expect(patchResp.body.isDeleted).toBe(true);
+    expect(patchResp.body.deleted_at).not.toBeNull();
+
+    // Try to get the post via admin (should still exist and be marked deleted)
+    const getAdminResp = await agent.get(`/api/v1/admin/${postId}`);
+    expect(getAdminResp.status).toBe(200);
+    expect(getAdminResp.body.isDeleted).toBe(true);
+
+    // Try to get the post via public endpoint (should be 404)
+    const getPublicResp = await agent.get(`/api/v1/posts/${postId}`);
+    expect(getPublicResp.status).toBe(404);
+  });
+
   it('GET /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
 
@@ -82,6 +137,8 @@ describe('admin gallery routes', () => {
       sold: expect.any(Boolean),
       originalPrice: null,
       discountedPrice: null,
+      isDeleted: false,
+      deletedAt: null,
     });
   });
 
@@ -133,6 +190,8 @@ describe('admin gallery routes', () => {
       selling_link: null,
       originalPrice: null,
       discountedPrice: null,
+      isDeleted: false,
+      deletedAt: null,
     });
     expect(resp2.status).toBe(200);
     expect(resp2.body).toEqual({
@@ -151,6 +210,8 @@ describe('admin gallery routes', () => {
       selling_link: null,
       originalPrice: null,
       discountedPrice: null,
+      isDeleted: false,
+      deletedAt: null,
     });
   });
 
@@ -185,6 +246,8 @@ describe('admin gallery routes', () => {
       hide: false,
       originalPrice: null,
       discountedPrice: null,
+      isDeleted: false,
+      deletedAt: null,
     });
   });
 
