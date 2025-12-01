@@ -109,6 +109,31 @@ describe('admin gallery routes', () => {
     expect(getPublicResp.status).toBe(404);
   });
 
+  it('Post.getById returns a soft-deleted post', async () => {
+    const Post = require('../lib/models/Post');
+    // Create a new post
+    const newPost = await Post.postNewPost(
+      'Soft Delete Test',
+      'Test description',
+      'test.jpg',
+      'Test Category',
+      '100',
+      1,
+      'public_id_test',
+      1,
+      false,
+      null,
+      false,
+    );
+    // Soft-delete the post
+    await Post.softDeleteById(newPost.id);
+    // Fetch the post by ID
+    const deletedPost = await Post.getById(newPost.id);
+    expect(deletedPost).toBeDefined();
+    expect(deletedPost.id).toBe(newPost.id);
+    expect(deletedPost.isDeleted).toBe(true);
+  });
+
   it('GET /api/v1/admin', async () => {
     const [agent] = await registerAndLogin();
 
