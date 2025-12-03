@@ -7,7 +7,7 @@ Built for performance, scalability, and smooth interaction across gallery browsi
 
 ---
 
-## 🧩 Overview
+## Overview
 
 **Stress Less Glass** combines a professional art portfolio with business management tools:
 
@@ -19,7 +19,7 @@ Built for performance, scalability, and smooth interaction across gallery browsi
 
 ---
 
-## ⚙️ Architecture
+## Architecture
 
 | Layer        | Tech                                                     |
 | ------------ | -------------------------------------------------------- |
@@ -32,7 +32,7 @@ Built for performance, scalability, and smooth interaction across gallery browsi
 
 ---
 
-## 🧠 Core Systems
+## Core Systems
 
 ### 1. Gallery, Profiles, and Admin Dashboard
 
@@ -71,7 +71,7 @@ Built for performance, scalability, and smooth interaction across gallery browsi
 
 ---
 
-## 🧱 Database Schema (Simplified)
+## Database Schema (Simplified)
 
 - **users_admin** – Authenticated users and admins
 - **profiles** – Linked user details and avatars
@@ -85,7 +85,7 @@ All keys use `ON DELETE CASCADE`. Indexed for read-heavy operations.
 
 ---
 
-## 🧪 Testing & CI
+## Testing & CI
 
 - Unit and integration coverage across backend routes.
 - Test runner:
