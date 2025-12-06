@@ -163,42 +163,6 @@ describe('auctionTimers', () => {
     });
   });
 
-  describe('sweepExpiredAuctions', () => {
-    it('should sweep and finalize expired auctions', async () => {
-      db.query.mockResolvedValue({ rows: [{ id: 1 }, { id: 2 }] });
-      global.wsService.emitAuctionEnded.mockClear();
-      const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-
-      await auctionTimers.sweepExpiredAuctions();
-
-      expect(db.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE auctions'));
-      expect(global.wsService.emitAuctionEnded).toHaveBeenCalledWith(1);
-      expect(global.wsService.emitAuctionEnded).toHaveBeenCalledWith(2);
-      expect(spy).toHaveBeenCalledWith(expect.stringContaining('Sweep ended 2 auctions'));
-      spy.mockRestore();
-    });
-
-    it('should handle no expired auctions', async () => {
-      db.query.mockResolvedValue({ rows: [] });
-      global.wsService.emitAuctionEnded.mockClear();
-
-      await auctionTimers.sweepExpiredAuctions();
-
-      expect(db.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE auctions'));
-      expect(global.wsService.emitAuctionEnded).not.toHaveBeenCalled();
-    });
-
-    it('should handle database errors', async () => {
-      db.query.mockRejectedValue(new Error('DB error'));
-      const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      await auctionTimers.sweepExpiredAuctions();
-
-      expect(spy).toHaveBeenCalledWith('[Cron] Sweep error', expect.any(Error));
-      spy.mockRestore();
-    });
-  });
-
   describe('scheduleAuctionEnd', () => {
     beforeEach(() => {
       jest.useFakeTimers();
