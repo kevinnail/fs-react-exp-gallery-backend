@@ -601,7 +601,7 @@ describe('admin gallery routes', () => {
     const galleryPost = await Post.getById(swapRes.body.post.id);
     expect(galleryPost).toBeTruthy();
     expect(galleryPost.title).toBe('Swap Auction');
-
+    expect(galleryPost.price).toBe('200');
     // Confirm images transferred to gallery_imgs
     const imgs = await Post.getAdditionalImages(galleryPost.id);
     expect(imgs.length).toBe(3);
