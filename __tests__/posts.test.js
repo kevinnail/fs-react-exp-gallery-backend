@@ -324,7 +324,6 @@ describe('admin gallery routes', () => {
     return jest.fn().mockImplementation(() => mockMulter);
   });
 
-  // Test case
   it('POST /admin/upload should upload a file/ files and return a 200 status code', async () => {
     const fakeImage1 = Buffer.from('fake-image-content-1');
     const fakeImage2 = Buffer.from('fake-image-content-2');
@@ -554,5 +553,63 @@ describe('admin gallery routes', () => {
         }),
       ]),
     );
+  });
+
+  it('PUT /api/v1/admin/swap/:id swaps auction to gallery post and transfers images', async () => {
+    const [agent, user] = await registerAndLogin();
+
+    // Create auction with multiple images and public IDs
+    const Auction = require('../lib/models/Auction');
+    const auction = await Auction.insert({
+      title: 'Swap Auction',
+      description: 'Auction to swap',
+      imageUrls: [
+        'http://www.big-cloud.com/img1.jpg',
+        'http://www.big-cloud.com/img2.jpg',
+        'http://www.big-cloud.com/img3.jpg',
+      ],
+      startPrice: 100,
+      buyNowPrice: 200,
+      currentBid: 100,
+      startTime: new Date(),
+      endTime: new Date(Date.now() + 3600000),
+      isActive: true,
+      creatorId: user.id,
+    });
+
+    // Add auction_results for deletion coverage
+    await pool.query(
+      `INSERT INTO auction_results (auction_id, winner_id, final_bid, closed_reason)
+       VALUES ($1, $2, $3, $4)`,
+      [auction.id, user.id, 150, 'expired'],
+    );
+
+    // Swap auction to gallery post
+    const swapRes = await agent.put(`/api/v1/admin/swap/${auction.id}`).send({ type: 'auction' });
+
+    expect(swapRes.status).toBe(200);
+    expect(swapRes.body.message).toBe('Auction swapped to gallery post');
+    expect(swapRes.body.post).toBeTruthy();
+    expect(swapRes.body.post.title).toBe('Swap Auction');
+
+    // Confirm auction is deleted
+    const deletedAuction = await Auction.getById(auction.id);
+    expect(deletedAuction).toBeNull();
+
+    // Confirm gallery post exists
+    const Post = require('../lib/models/Post');
+    const galleryPost = await Post.getById(swapRes.body.post.id);
+    expect(galleryPost).toBeTruthy();
+    expect(galleryPost.title).toBe('Swap Auction');
+
+    // Confirm images transferred to gallery_imgs
+    const imgs = await Post.getAdditionalImages(galleryPost.id);
+    expect(imgs.length).toBe(3);
+    expect(imgs.map((i) => i.image_url)).toEqual([
+      'http://www.big-cloud.com/img1.jpg',
+      'http://www.big-cloud.com/img2.jpg',
+      'http://www.big-cloud.com/img3.jpg',
+    ]);
+    expect(imgs.map((i) => i.public_id)).toEqual(['img1.jpg', 'img2.jpg', 'img3.jpg']);
   });
 });
