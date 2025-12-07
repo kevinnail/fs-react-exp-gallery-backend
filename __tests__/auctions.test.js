@@ -319,4 +319,47 @@ describe('Auction routes', () => {
       expect(updated.isPaid).toBe(true);
     });
   });
+
+  describe('Auction.deleteAuctionAndResultsById', () => {
+    it('deletes auction and its results in a transaction', async () => {
+      // Create a user and auction
+      const [agent, user] = await registerAndLogin();
+      const createRes = await agent.post('/api/v1/auctions').send({
+        auctionDetails: {
+          title: 'Delete Me',
+          description: 'To be deleted',
+          startPrice: 10,
+          buyNowPrice: 100,
+          startTime: new Date().toISOString(),
+          endTime: new Date(Date.now() + 1000 * 60).toISOString(),
+        },
+      });
+      const auctionId = createRes.body.id;
+
+      // Insert auction_results for this auction
+      await pool.query(
+        `INSERT INTO auction_results (auction_id, winner_id, final_bid, closed_reason)
+       VALUES ($1, $2, $3, $4)`,
+        [auctionId, user.id, 50, 'expired'],
+      );
+
+      // Delete auction and results
+      const deleted = await Auction.deleteAuctionAndResultsById(auctionId);
+      expect(deleted).toBeTruthy();
+      expect(deleted.id).toBe(auctionId);
+
+      // Confirm both auction and results are gone
+      const auction = await Auction.getById(auctionId);
+      expect(auction).toBeNull();
+      const { rows } = await pool.query('SELECT * FROM auction_results WHERE auction_id = $1', [
+        auctionId,
+      ]);
+      expect(rows.length).toBe(0);
+    });
+
+    it('returns null if auction does not exist', async () => {
+      const deleted = await Auction.deleteAuctionAndResultsById(999999);
+      expect(deleted).toBeNull();
+    });
+  });
 });
