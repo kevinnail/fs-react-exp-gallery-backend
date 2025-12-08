@@ -8,6 +8,7 @@ const FormData = require('form-data');
 
 jest.mock('../lib/utils/mailer', () => ({
   sendTrackingEmail: jest.fn().mockResolvedValue(true),
+  sendNewPostEmail: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('@aws-sdk/client-s3', () => {
