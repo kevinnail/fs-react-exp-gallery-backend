@@ -247,7 +247,7 @@ describe('auctionTimers', () => {
     it('should handle database errors gracefully', async () => {
       db.query.mockRejectedValue(new Error('DB error'));
       const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      sweepTask = auctionTimers.initAuctionTimers();
+      sweepTask = await auctionTimers.initAuctionTimers();
       expect(spy).toHaveBeenCalledWith(
         '[Cron] Failed to schedule timers on startup',
         expect.any(Error),
