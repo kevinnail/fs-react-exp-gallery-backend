@@ -329,9 +329,10 @@ describe('Gallery Post Sales routes', () => {
       expect(resp.status).toBe(401);
     });
 
-    it('should update tracking number for a sale', async () => {
+    it.only('should update tracking number for a sale', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
+      console.log(' START ========================================================');
 
       // Create sale without tracking
       const saleResp = await agent.post('/api/v1/admin/sales').send({
@@ -339,13 +340,16 @@ describe('Gallery Post Sales routes', () => {
         buyerEmail: buyer.email,
         price: '80.00',
       });
+      (console.log('saleResp'), saleResp);
 
       const saleId = saleResp.body.id;
+      (console.log('saleId'), saleId);
 
       // Update tracking number
       const resp = await agent.put(`/api/v1/admin/${saleId}/tracking`).send({
         trackingNumber: 'FEDEX987654321',
       });
+      (console.log('resp.body'), resp.body);
 
       expect(resp.status).toBe(200);
       expect(resp.body).toEqual({
@@ -361,6 +365,7 @@ describe('Gallery Post Sales routes', () => {
 
       // websocket emission asserted
       expect(global.wsService.emitSaleTrackingInfo).toHaveBeenCalled();
+      console.log(' END ========================================================');
     });
 
     it('should return 400 when trackingNumber is missing', async () => {
