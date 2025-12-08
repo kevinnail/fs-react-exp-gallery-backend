@@ -349,6 +349,7 @@ describe('Gallery Post Sales routes', () => {
       const resp = await agent.put(`/api/v1/admin/${saleId}/tracking`).send({
         trackingNumber: 'FEDEX987654321',
       });
+      (console.log('resp.status'), resp.status);
       (console.log('resp.body'), resp.body);
 
       expect(resp.status).toBe(200);
