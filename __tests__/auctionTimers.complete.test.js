@@ -1,3 +1,8 @@
+jest.mock('node-cron', () => ({
+  schedule: jest.fn(() => ({
+    stop: jest.fn(),
+  })),
+}));
 // __tests__/auctionTimers.test.js
 // Test suite for lib/jobs/auctionTimers.js
 
@@ -215,6 +220,14 @@ describe('auctionTimers', () => {
   });
 
   describe('initAuctionTimers', () => {
+    let sweepTask;
+
+    afterAll(() => {
+      if (sweepTask && typeof sweepTask.stop === 'function') {
+        sweepTask.stop();
+      }
+    });
+
     //^ not passing but doesn't matter right now: start time schedule isn't yet installed on front end, start time is when it's posted
     it.skip('should schedule timers for all active auctions on startup', async () => {
       db.query.mockResolvedValue({
@@ -224,7 +237,7 @@ describe('auctionTimers', () => {
         ],
       });
       const spy = jest.spyOn(auctionTimers, 'scheduleAuctionEnd');
-      await auctionTimers.initAuctionTimers();
+      sweepTask = auctionTimers.initAuctionTimers();
       expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SELECT id, end_time'));
       expect(spy).toHaveBeenCalledWith(1, expect.anything());
       expect(spy).toHaveBeenCalledWith(2, expect.anything());
@@ -234,7 +247,7 @@ describe('auctionTimers', () => {
     it('should handle database errors gracefully', async () => {
       db.query.mockRejectedValue(new Error('DB error'));
       const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      await auctionTimers.initAuctionTimers();
+      sweepTask = await auctionTimers.initAuctionTimers();
       expect(spy).toHaveBeenCalledWith(
         '[Cron] Failed to schedule timers on startup',
         expect.any(Error),

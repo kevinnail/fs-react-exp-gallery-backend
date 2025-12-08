@@ -1,3 +1,8 @@
+jest.mock('node-cron', () => ({
+  schedule: jest.fn(() => ({
+    stop: jest.fn(),
+  })),
+}));
 const pool = require('../lib/utils/pool');
 const setup = require('../data/setup');
 const auctionTimers = require('../lib/jobs/auctionTimers');

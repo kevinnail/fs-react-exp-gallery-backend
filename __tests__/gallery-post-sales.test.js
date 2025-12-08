@@ -16,6 +16,11 @@ global.wsService = {
   },
 };
 
+jest.mock('../lib/utils/mailer', () => ({
+  sendTrackingEmail: jest.fn(),
+  sendSaleCreatedEmail: jest.fn(),
+  sendSalePaidEmail: jest.fn(),
+}));
 const mockUser = {
   email: 'test@example.com',
   password: '12345',
@@ -260,7 +265,7 @@ describe('Gallery Post Sales routes', () => {
       const saleId = saleResp.body.id;
 
       // Update to paid
-      const resp = await agent.put(`/api/v1/admin/pay-status/${saleId}`).send({
+      const resp = await agent.put(`/api/v1/admin/sale-pay-status/${saleId}`).send({
         isPaid: true,
       });
 
@@ -294,12 +299,12 @@ describe('Gallery Post Sales routes', () => {
       const saleId = saleResp.body.id;
 
       // Update to paid
-      await agent.put(`/api/v1/admin/pay-status/${saleId}`).send({
+      await agent.put(`/api/v1/admin/sale-pay-status/${saleId}`).send({
         isPaid: true,
       });
 
       // Update back to unpaid
-      const resp = await agent.put(`/api/v1/admin/pay-status/${saleId}`).send({
+      const resp = await agent.put(`/api/v1/admin/sale-pay-status/${saleId}`).send({
         isPaid: false,
       });
 
@@ -311,7 +316,7 @@ describe('Gallery Post Sales routes', () => {
     it('should return 400 when isPaid is not boolean', async () => {
       const [agent] = await registerAndLogin();
 
-      const resp = await agent.put('/api/v1/admin/pay-status/1').send({
+      const resp = await agent.put('/api/v1/admin/sale-pay-status/1').send({
         isPaid: 'yes',
       });
 

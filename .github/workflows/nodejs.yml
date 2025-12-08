@@ -32,3 +32,4 @@ jobs:
           COOKIE_NAME: ${{ secrets.COOKIE_NAME }}
           ALLOWED_EMAILS: ${{secrets.ALLOWED_EMAILS}}
           EMAIL_VERIFY_SECRET: ${{secrets.EMAIL_VERIFY_SECRET}}
+          MAIL_FROM: ${{secrets.EMAIL_VERIFY_SECRET}}
