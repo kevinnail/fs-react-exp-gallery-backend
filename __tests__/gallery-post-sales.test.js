@@ -16,6 +16,11 @@ global.wsService = {
   },
 };
 
+jest.mock('../lib/utils/mailer', () => ({
+  sendTrackingEmail: jest.fn(),
+  sendSaleCreatedEmail: jest.fn(),
+  sendSalePaidEmail: jest.fn(),
+}));
 const mockUser = {
   email: 'test@example.com',
   password: '12345',
