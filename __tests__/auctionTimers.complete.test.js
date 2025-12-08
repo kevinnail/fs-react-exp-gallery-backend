@@ -1,3 +1,8 @@
+jest.mock('node-cron', () => ({
+  schedule: jest.fn(() => ({
+    stop: jest.fn(),
+  })),
+}));
 // __tests__/auctionTimers.test.js
 // Test suite for lib/jobs/auctionTimers.js
 
