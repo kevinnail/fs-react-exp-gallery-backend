@@ -98,9 +98,9 @@ describe('mailer', () => {
         '<html>{{trackingUrl}}{{trackingNumber}}{{homePageUrl}}{{instagramUrl}}</html>',
       );
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-      await mailer.sendTrackingEmail('to@example.com', 'TRACK123');
+      await mailer.sendTrackingEmail('post', 'to@example.com', 'TRACK123');
       expect(readFileSyncMock).toHaveBeenCalledWith(
-        expect.stringContaining('trackingEmail.html'),
+        expect.stringContaining('trackingEmailForPost.html'),
         'utf8',
       );
       expect(sendMailMock).toHaveBeenCalledWith(
