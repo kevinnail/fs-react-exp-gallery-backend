@@ -3,7 +3,12 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
+
 const FormData = require('form-data');
+
+jest.mock('../lib/utils/mailer', () => ({
+  sendTrackingEmail: jest.fn().mockResolvedValue(true),
+}));
 
 jest.mock('@aws-sdk/client-s3', () => {
   const mockS3Send = jest.fn().mockImplementation((command) => {
@@ -611,5 +616,68 @@ describe('admin gallery routes', () => {
       'http://www.big-cloud.com/img3.jpg',
     ]);
     expect(imgs.map((i) => i.public_id)).toEqual(['img1.jpg', 'img2.jpg', 'img3.jpg']);
+  });
+  it('PUT /api/v1/admin/:id/tracking should update tracking number and send email (success)', async () => {
+    const [agent, user] = await registerAndLogin();
+    const Post = require('../lib/models/Post');
+    const GalleryPostSale = require('../lib/models/GalleryPostSale');
+    const post = await Post.postNewPost(
+      'Tracking Test',
+      'desc',
+      'img.jpg',
+      'cat',
+      '100',
+      user.id,
+      'public_id',
+      1,
+      false,
+      null,
+      false,
+    );
+    const sale = await GalleryPostSale.createSale({
+      postId: post.id,
+      buyerId: user.id,
+      price: '100',
+      tracking: null,
+    });
+    const trackingNumber = 'TRACK123';
+    const resp = await agent.put(`/api/v1/admin/${sale.id}/tracking`).send({ trackingNumber });
+    expect(resp.status).toBe(200);
+    expect(resp.body.tracking_number).toBe(trackingNumber);
+    const { sendTrackingEmail } = require('../lib/utils/mailer');
+    expect(sendTrackingEmail).toHaveBeenCalledWith('post', expect.any(String), trackingNumber);
+  });
+
+  it('PUT /api/v1/admin/:id/tracking should return 400 if trackingNumber is missing or not a string', async () => {
+    const [agent, user] = await registerAndLogin();
+    const Post = require('../lib/models/Post');
+    const GalleryPostSale = require('../lib/models/GalleryPostSale');
+    const post = await Post.postNewPost(
+      'Tracking Test',
+      'desc',
+      'img.jpg',
+      'cat',
+      '100',
+      user.id,
+      'public_id',
+      1,
+      false,
+      null,
+      false,
+    );
+    const sale = await GalleryPostSale.createSale({
+      postId: post.id,
+      buyerId: user.id,
+      price: '100',
+      tracking: null,
+    });
+    const resp1 = await agent.put(`/api/v1/admin/${sale.id}/tracking`).send({});
+    expect(resp1.status).toBe(400);
+    expect(resp1.body).toEqual({ error: 'trackingNumber must be a string' });
+    const resp2 = await agent
+      .put(`/api/v1/admin/${sale.id}/tracking`)
+      .send({ trackingNumber: 123 });
+    expect(resp2.status).toBe(400);
+    expect(resp2.body).toEqual({ error: 'trackingNumber must be a string' });
   });
 });
