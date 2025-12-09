@@ -103,6 +103,30 @@ describe('Gallery Post Sales routes', () => {
       });
     });
 
+    it('should set sold status to true on gallery post after sale', async () => {
+      const [agent] = await registerAndLogin();
+      const [, buyer] = await registerAndLogin(mockBuyer);
+
+      // Create sale
+      const saleResp = await agent.post('/api/v1/admin/sales').send({
+        postId: '1',
+        buyerEmail: buyer.email,
+        price: '99.99',
+      });
+
+      expect(saleResp.status).toBe(201);
+      expect(saleResp.body.post_id).toBe(1);
+      expect(saleResp.body.buyer_id).toBe(2);
+      expect(saleResp.body.price).toEqual('99.99');
+      expect(saleResp.body.is_paid).toBe(false);
+      expect(saleResp.body.paid_at).toBe(null);
+
+      // Fetch gallery post
+      const postResp = await agent.get('/api/v1/admin/1');
+      expect(postResp.status).toBe(200);
+      expect(postResp.body.sold).toBe(true);
+    });
+
     it('should create a sale without tracking number', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
@@ -393,6 +417,23 @@ describe('Gallery Post Sales routes', () => {
 describe('GalleryPostSale Model', () => {
   beforeEach(() => {
     return setup(pool);
+  });
+
+  describe('Post.updateSoldStatus', () => {
+    it('should update sold status to true for a gallery post', async () => {
+      // Insert a post
+      const { rows } = await pool.query(`
+        INSERT INTO gallery_posts (title, description, image_url, category, price, author_id, public_id, num_imgs, sold, selling_link, hide)
+        VALUES ('Test', 'Desc', 'img.jpg', 'cat', '10.00', 1, 'pid', 1, false, 'link', false)
+        RETURNING *;
+      `);
+      const postId = rows[0].id;
+
+      // Call updateSoldStatus
+      const Post = require('../lib/models/Post');
+      const updated = await Post.updateSoldStatus(postId);
+      expect(updated.sold).toBe(true);
+    });
   });
 
   describe('GalleryPostSale.createSale', () => {
