@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS auction_results CASCADE;
 DROP TABLE IF EXISTS bids CASCADE;
 DROP TABLE IF EXISTS auction_notifications CASCADE;
 DROP TABLE IF EXISTS gallery_post_sales CASCADE;
+DROP TABLE IF EXISTS error_logs CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -153,6 +154,12 @@ CREATE TABLE gallery_post_sales (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE error_logs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  error TEXT NOT NULL,
+  context TEXT
+);
 
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
