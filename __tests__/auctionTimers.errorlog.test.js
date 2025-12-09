@@ -25,6 +25,8 @@ it('logs error if sweepExpiredAuctions throws', async () => {
 });
 
 // ^ not a working/ passing test yet- can't get the error to trigger....
+//^ iterated too many times getting nowhere.  Tried extracting the callback in auctionsTimers
+// ^ so it was directly accessible but nothing is touching it- 'Number of calls: 0" is all she wrote
 it.skip('logs error if scheduleAuctionEnd timer throws', async () => {
   const err = new Error('Timer fail');
 
