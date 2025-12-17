@@ -161,7 +161,6 @@ CREATE TABLE error_logs (
   context TEXT
 );
 
-
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
 VALUES 
   (NOW(), 'Test 1', 'Test 1', 'Test 1', 'Test 1', 'Test 1', 1, 'Test 1', 1),

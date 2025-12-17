@@ -115,25 +115,34 @@ describe('mailer', () => {
       );
       logSpy.mockRestore();
     });
+
+    it('should throw when required args are missing', async () => {
+      await expect(mailer.sendTrackingEmail('to@example.com', 'TRACK123')).rejects.toThrow(
+        'sendTrackingEmail requires (auctionOrPost, to, trackingNumber)',
+      );
+    });
+
     it('should throw if template file is missing', async () => {
       readFileSyncMock.mockImplementation(() => {
         throw new Error('file not found');
       });
-      await expect(mailer.sendTrackingEmail('to@example.com', 'TRACK123')).rejects.toThrow(
+      await expect(mailer.sendTrackingEmail('post', 'to@example.com', 'TRACK123')).rejects.toThrow(
         'file not found',
       );
     });
     it('should throw if sendMail fails', async () => {
       readFileSyncMock.mockReturnValue('<html></html>');
       sendMailMock.mockRejectedValueOnce(new Error('smtp fail'));
-      await expect(mailer.sendTrackingEmail('to@example.com', 'TRACK123')).rejects.toThrow(
+      await expect(mailer.sendTrackingEmail('post', 'to@example.com', 'TRACK123')).rejects.toThrow(
         'smtp fail',
       );
     });
     it('should throw if MAIL_FROM is missing', async () => {
       readFileSyncMock.mockReturnValue('<html></html>');
       delete process.env.MAIL_FROM;
-      await expect(mailer.sendTrackingEmail('to@example.com', 'TRACK123')).rejects.toThrow();
+      await expect(
+        mailer.sendTrackingEmail('post', 'to@example.com', 'TRACK123'),
+      ).rejects.toThrow();
     });
   });
 

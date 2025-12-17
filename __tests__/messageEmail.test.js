@@ -18,6 +18,10 @@ const mockUserCreds = {
 
 describe('message email notifications', () => {
   beforeEach(async () => {
+    // Ensure tests treat the created user as a normal user by default.
+    // (In your test DB, the first created user is often id=1, which can collide with ADMIN_ID.)
+    process.env.ADMIN_ID = '999999';
+    process.env.ADMIN_EMAIL = 'admin_message_email_test@example.com';
     await setup(pool);
     jest.clearAllMocks();
   });
@@ -95,5 +99,38 @@ describe('message email notifications', () => {
 
     expect(result).toEqual({ sent: false, reason: 'throttled' });
     expect(sendMessageEmail).not.toHaveBeenCalled();
+  });
+
+  it('sends email to admin email and bypasses throttle window for admin recipient', async () => {
+    const { user } = await UserService.create({
+      email: 'message_email_admin_test@example.com',
+      password: '12345',
+    });
+
+    // Treat this created user as the admin recipient for this test
+    process.env.ADMIN_ID = String(user.id);
+
+    const recipient = await User.getEmailById(user.id);
+
+    // Ensure profile exists and is opted-in (opt-in check runs for admin too)
+    await Profile.upsertByUserId(user.id, {
+      firstName: null,
+      lastName: null,
+      imageUrl: null,
+      sendEmailNotifications: true,
+    });
+
+    // If admin followed normal user logic, this would throttle
+    const ts = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    await Profile.updateLastMessageEmailTimestamp(user.id, ts);
+
+    const message = { messageContent: 'Customer message to admin' };
+    const result = await sendMessageNotificationEmail({ user: recipient, message });
+
+    expect(result).toEqual({ sent: true });
+    expect(sendMessageEmail).toHaveBeenCalledWith({
+      to: process.env.ADMIN_EMAIL,
+      message,
+    });
   });
 });
