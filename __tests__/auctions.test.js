@@ -148,7 +148,7 @@ describe('Auction routes', () => {
         .put(`/api/v1/auctions/${auctionId}/tracking`)
         .send({ trackingNumber });
 
-      expect(sendTrackingEmail).toHaveBeenCalled();
+      expect(sendTrackingEmail).toHaveBeenCalledWith('auction', expect.any(String), trackingNumber);
       // websocket emission asserted
       expect(global.wsService.emitTrackingInfo).toHaveBeenCalled();
       expect(res.status).toBe(200);
