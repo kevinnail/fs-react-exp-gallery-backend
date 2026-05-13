@@ -15,9 +15,7 @@ module.exports = (pool) => {
       if (dbNotFound) {
         const [err, db] = dbNotFound;
         console.error('❌ Error: ' + err);
-        console.info(
-          `Try running \`createdb -U postgres ${db}\` in your terminal`
-        );
+        console.info(`Try running \`createdb -U postgres ${db}\` in your terminal`);
       } else {
         console.error(error);
         console.error('❌ Error: ' + error.message);
