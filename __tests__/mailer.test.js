@@ -205,6 +205,48 @@ describe('mailer', () => {
     });
   });
 
+  describe('sendNewPostEmail', () => {
+    it('should send new gallery post email with correct template, dynamic subject, and resolved post URL', async () => {
+      readFileSyncMock.mockReturnValue(
+        '<html>{{title}}{{description}}{{imageUrl}}{{postUrl}}{{homePageUrl}}{{instagramUrl}}</html>',
+      );
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      const post = { id: 7, title: 'Test Piece', description: 'Desc', image_url: 'img.jpg' };
+      await mailer.sendNewPostEmail({ to: 'to@example.com', post });
+      expect(readFileSyncMock).toHaveBeenCalledWith(
+        expect.stringContaining('newPostEmail.html'),
+        'utf8',
+      );
+      const sentArgs = sendMailMock.mock.calls[0][0];
+      // subject derives from post.title, not a constant
+      expect(sentArgs.subject).toBe('New Gallery Post: Test Piece');
+      expect(sentArgs.to).toBe('to@example.com');
+      // post data flows through and URL points at /:id (not /posts/:id)
+      expect(sentArgs.html).toContain('Test Piece');
+      expect(sentArgs.html).toContain('http://localhost:3001/7');
+      // no unrendered placeholders leak into the email
+      expect(sentArgs.html).not.toContain('{{');
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Gallery post notification email sent to: to@example.com'),
+      );
+      logSpy.mockRestore();
+    });
+    it('should throw if sendMail fails', async () => {
+      readFileSyncMock.mockReturnValue('<html></html>');
+      const post = { id: 7, title: 'Test Piece', description: 'Desc', image_url: 'img.jpg' };
+      sendMailMock.mockRejectedValueOnce(new Error('smtp fail'));
+      await expect(mailer.sendNewPostEmail({ to: 'to@example.com', post })).rejects.toThrow(
+        'smtp fail',
+      );
+    });
+    it('should throw if MAIL_FROM is missing', async () => {
+      readFileSyncMock.mockReturnValue('<html></html>');
+      const post = { id: 7, title: 'Test Piece', description: 'Desc', image_url: 'img.jpg' };
+      delete process.env.MAIL_FROM;
+      await expect(mailer.sendNewPostEmail({ to: 'to@example.com', post })).rejects.toThrow();
+    });
+  });
+
   describe('sendMessageEmail', () => {
     it('should send message email with correct subject and content', async () => {
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
