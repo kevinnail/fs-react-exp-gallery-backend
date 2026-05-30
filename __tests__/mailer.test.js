@@ -284,4 +284,53 @@ describe('mailer', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('sendMassEmail', () => {
+    it('renders the mass-email template with subject and escaped body, newlines as <br>', async () => {
+      readFileSyncMock.mockReturnValue(
+        '<html>{{subject}}|{{messageBody}}|{{homePageUrl}}|{{instagramUrl}}</html>',
+      );
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      await mailer.sendMassEmail({
+        to: 'to@example.com',
+        subject: 'Apology',
+        message: 'Line one\nLine <two> & more',
+      });
+
+      expect(readFileSyncMock).toHaveBeenCalledWith(
+        expect.stringContaining('massEmail.html'),
+        'utf8',
+      );
+      const sentArgs = sendMailMock.mock.calls[0][0];
+      expect(sentArgs.to).toBe('to@example.com');
+      // subject passes through verbatim as the email subject
+      expect(sentArgs.subject).toBe('Apology');
+      // body newline becomes <br>, and HTML in the user's text is escaped
+      expect(sentArgs.html).toContain('Line one<br />Line &lt;two&gt; &amp; more');
+      // raw, unescaped angle brackets from the body must not leak into the markup
+      expect(sentArgs.html).not.toContain('<two>');
+      // no unrendered placeholders remain
+      expect(sentArgs.html).not.toContain('{{');
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Mass email sent to: to@example.com'),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('should throw if sendMail fails', async () => {
+      readFileSyncMock.mockReturnValue('<html>{{messageBody}}</html>');
+      sendMailMock.mockRejectedValueOnce(new Error('smtp fail'));
+      await expect(
+        mailer.sendMassEmail({ to: 'to@example.com', subject: 'S', message: 'M' }),
+      ).rejects.toThrow('smtp fail');
+    });
+
+    it('should throw if MAIL_FROM is missing', async () => {
+      readFileSyncMock.mockReturnValue('<html></html>');
+      delete process.env.MAIL_FROM;
+      await expect(
+        mailer.sendMassEmail({ to: 'to@example.com', subject: 'S', message: 'M' }),
+      ).rejects.toThrow();
+    });
+  });
 });
