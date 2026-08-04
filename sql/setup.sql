@@ -63,7 +63,8 @@ CREATE TABLE profiles (
   show_welcome BOOLEAN NOT NULL DEFAULT TRUE,
   send_email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
   last_auction_email_at TIMESTAMP NULL,
-  last_message_email_at TIMESTAMP NULL
+  last_message_email_at TIMESTAMP NULL,
+  last_post_email_at TIMESTAMP NULL
 );
 
 CREATE TABLE addresses (
