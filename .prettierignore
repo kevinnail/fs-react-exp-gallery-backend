@@ -1,1 +1,7 @@
+# Ignore all files in the build folder
+**/build/static/*
 _redirects
+
+# Compiled frontend bundle served by Express — not source.
+lib/clientBuild/
+coverage/
