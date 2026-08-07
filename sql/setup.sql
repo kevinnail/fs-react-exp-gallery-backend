@@ -50,6 +50,8 @@ CREATE TABLE gallery_imgs (
   FOREIGN KEY (post_id) REFERENCES gallery_posts(id) ON DELETE CASCADE
 );
 
+CREATE INDEX gallery_imgs_post_id_idx ON gallery_imgs(post_id);
+
 CREATE TABLE profiles (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id BIGINT NOT NULL,
