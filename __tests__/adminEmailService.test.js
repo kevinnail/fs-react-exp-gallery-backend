@@ -20,7 +20,7 @@ function makeProfileData({
 }
 
 const createUserWithProfile = async ({ email, sendEmailNotifications }) => {
-  const { user } = await UserService.create({ email, password: '12345' });
+  const { user } = await UserService.create({ email, password: 'Test1234!' });
   await Profile.insert(
     makeProfileData({
       userId: user.id,
