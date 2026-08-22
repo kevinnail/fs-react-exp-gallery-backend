@@ -4,10 +4,12 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 const User = require('../lib/models/User.js');
-const { sendVerificationEmail } = require('../lib/utils/mailer.js');
+const jwt = require('jsonwebtoken');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../lib/utils/mailer.js');
 
 jest.mock('../lib/utils/mailer.js', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue(),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(),
 }));
 
 const mockUser = {
@@ -187,6 +189,66 @@ describe('user routes', () => {
       expect(r.status).toBe(200);
     }
     const fourth = await request(app).post('/api/v1/users/resend-verification').send({ email });
+    expect(fourth.status).toBe(429);
+  });
+
+  it('forgot password sends a reset email and bumps the reset token version', async () => {
+    sendPasswordResetEmail.mockClear();
+    const email = 'forgot1@example.com';
+    await UserService.create({ email, password: 'abc123' });
+
+    const before = await User.getByEmail(email);
+    expect(before.passwordResetTokenVersion).toBe(1);
+
+    const res = await request(app).post('/api/v1/users/forgot-password').send({ email });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('If an account exists, a password reset email has been sent.');
+
+    const after = await User.getByEmail(email);
+
+    expect(after.passwordResetTokenVersion).toBe(2);
+
+    expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    const [recipient, resetToken] = sendPasswordResetEmail.mock.calls[0];
+    expect(recipient).toBe(email);
+
+    // The token has to carry the bumped version, otherwise the reset step cannot
+    // tell a fresh link from a superseded one.
+    const payload = jwt.verify(resetToken, process.env.PASSWORD_RESET_SECRET);
+    expect(payload.userId).toBe(after.id);
+    expect(payload.passwordResetTokenVersion).toBe(2);
+  });
+
+  it('forgot password does not leak whether an account exists', async () => {
+    sendPasswordResetEmail.mockClear();
+    const knownEmail = 'forgot2@example.com';
+    await UserService.create({ email: knownEmail, password: 'abc123' });
+
+    const known = await request(app).post('/api/v1/users/forgot-password').send({
+      email: knownEmail,
+    });
+    const unknown = await request(app).post('/api/v1/users/forgot-password').send({
+      email: 'nobody-here@example.com',
+    });
+
+    expect(unknown.status).toBe(known.status);
+    expect(unknown.body).toEqual(known.body);
+
+    // Only the real account triggers mail
+    expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    expect(sendPasswordResetEmail.mock.calls[0][0]).toBe(knownEmail);
+  });
+
+  it('rate limits forgot password after 3 attempts (per-email only)', async () => {
+    const email = 'forgot-ratelimit@example.com';
+    await UserService.create({ email, password: 'abc123' });
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await request(app).post('/api/v1/users/forgot-password').send({ email });
+      expect(response.status).toBe(200);
+    }
+
+    const fourth = await request(app).post('/api/v1/users/forgot-password').send({ email });
     expect(fourth.status).toBe(429);
   });
 });
