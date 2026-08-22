@@ -11,7 +11,7 @@ jest.mock('../lib/utils/mailer.js', () => ({
 const { sendMassEmail } = require('../lib/utils/mailer.js');
 
 // test@example.com is configured as an admin (in ALLOWED_EMAILS) for the test env
-const adminUser = { email: 'test@example.com', password: '12345' };
+const adminUser = { email: 'test@example.com', password: 'Test1234!' };
 
 const registerAndLogin = async (userOverrides = {}) => {
   const agent = request.agent(app);
@@ -37,7 +37,7 @@ describe('POST /api/v1/admin/mass-email', () => {
     const [adminAgent] = await registerAndLogin();
     const { user: recipient } = await UserService.create({
       email: 'optin@example.com',
-      password: '12345',
+      password: 'Test1234!',
     });
     await Profile.insert({
       userId: recipient.id,
