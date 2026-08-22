@@ -31,12 +31,12 @@ describe('auctionTimers sweepExpiredAuctions', () => {
     // Create two users for FK references
     const { user: u1 } = await UserService.create({
       email: 'u1@test.com',
-      password: '12345',
+      password: 'Test1234!',
     });
 
     const { user: u2 } = await UserService.create({
       email: 'u2@test.com',
-      password: '12345',
+      password: 'Test1234!',
     });
 
     // Insert 2 expired auctions
@@ -118,7 +118,7 @@ describe('auctionTimers sweepExpiredAuctions', () => {
   it('handles case with no expired auctions', async () => {
     const { user } = await UserService.create({
       email: 'future@test.com',
-      password: '12345',
+      password: 'Test1234!',
     });
 
     // Create an active auction that is NOT expired

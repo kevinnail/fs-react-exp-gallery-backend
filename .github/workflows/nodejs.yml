@@ -34,4 +34,4 @@ jobs:
           ALLOWED_EMAILS: ${{secrets.ALLOWED_EMAILS}}
           EMAIL_VERIFY_SECRET: ${{secrets.EMAIL_VERIFY_SECRET}}
           MAIL_FROM: ${{secrets.EMAIL_VERIFY_SECRET}}
-          PASSWORD_RESET_SECRET: ${{secrets.EMAIL_VERIFY_SECRET}}
+          PASSWORD_RESET_SECRET: ${{secrets.PASSWORD_RESET_SECRET}}

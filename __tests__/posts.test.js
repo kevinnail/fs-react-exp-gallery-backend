@@ -37,7 +37,7 @@ jest.mock('@aws-sdk/client-s3', () => {
 
 const mockUser = {
   email: 'test@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 const registerAndLogin = async () => {

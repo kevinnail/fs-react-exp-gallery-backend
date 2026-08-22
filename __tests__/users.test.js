@@ -14,7 +14,7 @@ jest.mock('../lib/utils/mailer.js', () => ({
 
 const mockUser = {
   email: 'test@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 const registerAndLogin = async (userProps = {}) => {
@@ -50,7 +50,7 @@ describe('user routes', () => {
     await request(app).post('/api/v1/users').send(mockUser);
     const res = await request(app)
       .post('/api/v1/users/sessions')
-      .send({ email: 'test@example.com', password: '12345' });
+      .send({ email: 'test@example.com', password: 'Test1234!' });
     expect(res.status).toEqual(200);
   });
 
@@ -60,14 +60,14 @@ describe('user routes', () => {
     // create a new user
     await agent.post('/api/v1/users').send({
       email: process.env.ALLOWED_EMAILS.split(',')[0],
-      password: '1234',
+      password: 'Test1234!',
       firstName: 'admin',
       lastName: 'admin',
     });
     // sign in the user
     await agent
       .post('/api/v1/users/sessions')
-      .send({ email: process.env.ALLOWED_EMAILS.split(',')[0], password: '1234' });
+      .send({ email: process.env.ALLOWED_EMAILS.split(',')[0], password: 'Test1234!' });
     const res = await agent.get('/api/v1/users/');
     expect(res.status).toEqual(200);
   });
@@ -86,7 +86,7 @@ describe('user routes', () => {
 
   it('verifies a user and allows them to access /me', async () => {
     // Step 1 - Create an unverified user (directly through the service)
-    const mockUser = { email: 'testverify@example.com', password: '12345' };
+    const mockUser = { email: 'testverify@example.com', password: 'Test1234!' };
     const { verifyToken } = await UserService.create(mockUser);
 
     // Step 2 - Simulate clicking the verification link
@@ -137,11 +137,11 @@ describe('user routes', () => {
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
     const uniqueEmail = 'unverified-flow@example.com';
-    const { user } = await UserService.create({ email: uniqueEmail, password: 'pass123' });
+    const { user } = await UserService.create({ email: uniqueEmail, password: 'Test1234!' });
     expect(user.isVerified).toBe(false);
     const res = await request(app)
       .post('/api/v1/users/sessions')
-      .send({ email: uniqueEmail, password: 'pass123' });
+      .send({ email: uniqueEmail, password: 'Test1234!' });
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('EMAIL_NOT_VERIFIED');
     process.env.NODE_ENV = originalNodeEnv;
@@ -149,7 +149,7 @@ describe('user routes', () => {
 
   it('increments verification token version and invalidates old token after resend', async () => {
     const email = 'resend1@example.com';
-    const { verifyToken } = await UserService.create({ email, password: 'pass123' });
+    const { verifyToken } = await UserService.create({ email, password: 'Test1234!' });
     const firstUser = await User.getByEmail(email);
     expect(firstUser.verificationTokenVersion).toBe(1);
 
@@ -172,7 +172,7 @@ describe('user routes', () => {
 
   it('resend verification route increments version but returns generic message', async () => {
     const email = 'resend2@example.com';
-    await UserService.create({ email, password: 'abc123' });
+    await UserService.create({ email, password: 'Test1234!' });
     const before = await User.getByEmail(email);
     expect(before.verificationTokenVersion).toBe(1);
     const res = await request(app).post('/api/v1/users/resend-verification').send({ email });
@@ -195,7 +195,7 @@ describe('user routes', () => {
   it('forgot password sends a reset email and bumps the reset token version', async () => {
     sendPasswordResetEmail.mockClear();
     const email = 'forgot1@example.com';
-    await UserService.create({ email, password: 'abc123' });
+    await UserService.create({ email, password: 'Test1234!' });
 
     const before = await User.getByEmail(email);
     expect(before.passwordResetTokenVersion).toBe(1);
@@ -222,7 +222,7 @@ describe('user routes', () => {
   it('forgot password does not leak whether an account exists', async () => {
     sendPasswordResetEmail.mockClear();
     const knownEmail = 'forgot2@example.com';
-    await UserService.create({ email: knownEmail, password: 'abc123' });
+    await UserService.create({ email: knownEmail, password: 'Test1234!' });
 
     const known = await request(app).post('/api/v1/users/forgot-password').send({
       email: knownEmail,
@@ -241,7 +241,7 @@ describe('user routes', () => {
 
   it('rate limits forgot password after 3 attempts (per-email only)', async () => {
     const email = 'forgot-ratelimit@example.com';
-    await UserService.create({ email, password: 'abc123' });
+    await UserService.create({ email, password: 'Test1234!' });
 
     for (let attempt = 0; attempt < 3; attempt++) {
       const response = await request(app).post('/api/v1/users/forgot-password').send({ email });
@@ -250,5 +250,97 @@ describe('user routes', () => {
 
     const fourth = await request(app).post('/api/v1/users/forgot-password').send({ email });
     expect(fourth.status).toBe(429);
+  });
+
+  it('resets the password, then the new one works and the old one does not', async () => {
+    const email = 'reset-golden@example.com';
+    const originalPassword = 'Test1234!';
+    const newPassword = 'BrandNew5$';
+    await UserService.create({ email, password: originalPassword });
+
+    const { resetToken } = await UserService.requestPasswordReset({ email });
+
+    const res = await request(app)
+      .post('/api/v1/users/reset-password')
+      .send({ token: resetToken, password: newPassword });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Your password has been reset. You can now sign in.');
+
+    const withNewPassword = await request(app)
+      .post('/api/v1/users/sessions')
+      .send({ email, password: newPassword });
+    expect(withNewPassword.status).toBe(200);
+    expect(withNewPassword.headers['set-cookie']).toBeDefined();
+
+    const withOldPassword = await request(app)
+      .post('/api/v1/users/sessions')
+      .send({ email, password: originalPassword });
+    expect(withOldPassword.status).toBe(401);
+  });
+
+  it('rejects a reset token that has already been used', async () => {
+    const email = 'reset-reuse@example.com';
+    await UserService.create({ email, password: 'Test1234!' });
+
+    const { resetToken } = await UserService.requestPasswordReset({ email });
+
+    const first = await request(app)
+      .post('/api/v1/users/reset-password')
+      .send({ token: resetToken, password: 'FirstPass1$' });
+    expect(first.status).toBe(200);
+
+    const second = await request(app)
+      .post('/api/v1/users/reset-password')
+      .send({ token: resetToken, password: 'SecondPass2$' });
+    expect(second.status).toBe(400);
+    expect(second.body.code).toBe('RESET_TOKEN_INVALIDATED');
+
+    // The second attempt must not have taken effect
+    const signIn = await request(app)
+      .post('/api/v1/users/sessions')
+      .send({ email, password: 'SecondPass2$' });
+    expect(signIn.status).toBe(401);
+  });
+
+  it('rejects a weak new password and leaves the stored hash alone', async () => {
+    const email = 'reset-weak@example.com';
+    await UserService.create({ email, password: 'Test1234!' });
+    const before = await User.getByEmail(email);
+
+    const { resetToken } = await UserService.requestPasswordReset({ email });
+
+    const res = await request(app)
+      .post('/api/v1/users/reset-password')
+      .send({ token: resetToken, password: 'weakpass' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('WEAK_PASSWORD');
+
+    const after = await User.getByEmail(email);
+    expect(after.passwordHash).toBe(before.passwordHash);
+  });
+
+  it('rejects a token signed with the email verification secret', async () => {
+    const email = 'reset-wrong-secret@example.com';
+    const { user } = await UserService.create({ email, password: 'Test1234!' });
+
+    const forgedToken = jwt.sign(
+      { userId: user.id, passwordResetTokenVersion: 1 },
+      process.env.EMAIL_VERIFY_SECRET,
+      { expiresIn: '30m' },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/users/reset-password')
+      .send({ token: forgedToken, password: 'BrandNew5$' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('RESET_TOKEN_INVALID');
+  });
+
+  it('rejects a weak password at signup', async () => {
+    const res = await request(app)
+      .post('/api/v1/users')
+      .send({ email: 'weak-signup@example.com', password: 'password' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('WEAK_PASSWORD');
   });
 });

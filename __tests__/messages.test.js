@@ -9,7 +9,7 @@ const mockUser = {
   firstName: 'Test',
   lastName: 'User',
   email: 'test@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 const registerAndLogin = async (userProps = {}) => {

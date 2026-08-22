@@ -23,12 +23,12 @@ jest.mock('../lib/utils/mailer', () => ({
 }));
 const mockUser = {
   email: 'test@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 const mockBuyer = {
   email: 'buyer@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 afterAll(() => {
@@ -610,7 +610,7 @@ describe('GalleryPostSale Model', () => {
       const { user: buyer1 } = await UserService.create(mockBuyer);
       const { user: buyer2 } = await UserService.create({
         email: 'buyer2@example.com',
-        password: '12345',
+        password: 'Test1234!',
       });
 
       // Create sales for buyer1
