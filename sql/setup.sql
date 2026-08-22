@@ -18,7 +18,8 @@ CREATE TABLE users_admin (
   email VARCHAR UNIQUE NOT NULL,
   password_hash VARCHAR NOT NULL,
   is_verified BOOLEAN DEFAULT FALSE,
-  verification_token_version INTEGER NOT NULL DEFAULT 1
+  verification_token_version INTEGER NOT NULL DEFAULT 1,
+  password_reset_token_version INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE gallery_posts (
