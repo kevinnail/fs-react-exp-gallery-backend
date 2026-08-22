@@ -23,7 +23,7 @@ function makeProfileData({
 
 const mockUser = {
   email: 'test@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 const registerAndLogin = async (userOverrides = {}) => {
