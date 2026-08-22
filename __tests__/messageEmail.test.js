@@ -13,7 +13,7 @@ const { sendMessageEmail } = require('../lib/utils/mailer.js');
 
 const mockUserCreds = {
   email: 'message_email_test@example.com',
-  password: '12345',
+  password: 'Test1234!',
 };
 
 describe('message email notifications', () => {
@@ -104,7 +104,7 @@ describe('message email notifications', () => {
   it('sends email to admin email and bypasses throttle window for admin recipient', async () => {
     const { user } = await UserService.create({
       email: 'message_email_admin_test@example.com',
-      password: '12345',
+      password: 'Test1234!',
     });
 
     // Treat this created user as the admin recipient for this test
