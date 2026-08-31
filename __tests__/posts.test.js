@@ -60,6 +60,47 @@ describe('admin gallery routes', () => {
     pool.end();
   });
 
+  it('POST /api/v1/admin persists a discounted price and its original price', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'discounted piece',
+      description: 'discounted description',
+      image_url: 'discounted img',
+      category: 'discounted cat',
+      price: '120',
+      discountedPrice: '85',
+      author_id: 1,
+    });
+
+    expect(resp.status).toBe(200);
+    expect(resp.body.price).toBe('120');
+    expect(resp.body.discountedPrice).toBe('85');
+    expect(resp.body.originalPrice).toBe('120');
+
+    const getResp = await agent.get(`/api/v1/posts/${resp.body.id}`);
+    expect(getResp.status).toBe(200);
+    expect(getResp.body.discountedPrice).toBe('85');
+    expect(getResp.body.originalPrice).toBe('120');
+  });
+
+  it('POST /api/v1/admin stores a blank discounted price as null', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'full price piece',
+      description: 'full price description',
+      image_url: 'full price img',
+      category: 'full price cat',
+      price: '120',
+      discountedPrice: '',
+      author_id: 1,
+    });
+
+    expect(resp.status).toBe(200);
+    // An empty string here would make the discount comparison misbehave downstream
+    expect(resp.body.discountedPrice).toBeNull();
+    expect(resp.body.originalPrice).toBe('120');
+  });
+
   it('DELETE /api/v1/admin/:id should delete a post', async () => {
     // First, create a new post using Post.postNewPost() method
     const [agent] = await registerAndLogin();
@@ -127,6 +168,8 @@ describe('admin gallery routes', () => {
       1,
       'public_id_test',
       1,
+      null,
+      '100',
       false,
       null,
       false,
@@ -634,6 +677,8 @@ describe('admin gallery routes', () => {
       user.id,
       'public_id',
       1,
+      null,
+      '100',
       false,
       null,
       false,
@@ -665,6 +710,8 @@ describe('admin gallery routes', () => {
       user.id,
       'public_id',
       1,
+      null,
+      '100',
       false,
       null,
       false,
