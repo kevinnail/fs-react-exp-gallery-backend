@@ -60,6 +60,47 @@ describe('admin gallery routes', () => {
     pool.end();
   });
 
+  it('POST /api/v1/admin persists a discounted price and its original price', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'discounted piece',
+      description: 'discounted description',
+      image_url: 'discounted img',
+      category: 'discounted cat',
+      price: '120',
+      discountedPrice: '85',
+      author_id: 1,
+    });
+
+    expect(resp.status).toBe(200);
+    expect(resp.body.price).toBe('120');
+    expect(resp.body.discountedPrice).toBe('85');
+    expect(resp.body.originalPrice).toBe('120');
+
+    const getResp = await agent.get(`/api/v1/main-gallery/${resp.body.id}`);
+    expect(getResp.status).toBe(200);
+    expect(getResp.body.discountedPrice).toBe('85');
+    expect(getResp.body.originalPrice).toBe('120');
+  });
+
+  it('POST /api/v1/admin stores a blank discounted price as null', async () => {
+    const [agent] = await registerAndLogin();
+    const resp = await agent.post('/api/v1/admin').send({
+      title: 'full price piece',
+      description: 'full price description',
+      image_url: 'full price img',
+      category: 'full price cat',
+      price: '120',
+      discountedPrice: '',
+      author_id: 1,
+    });
+
+    expect(resp.status).toBe(200);
+    // An empty string here would make the discount comparison misbehave downstream
+    expect(resp.body.discountedPrice).toBeNull();
+    expect(resp.body.originalPrice).toBe('120');
+  });
+
   it('DELETE /api/v1/admin/:id should delete a post', async () => {
     // First, create a new post using Post.postNewPost() method
     const [agent] = await registerAndLogin();
@@ -127,6 +168,8 @@ describe('admin gallery routes', () => {
       1,
       'public_id_test',
       1,
+      null,
+      '100',
       false,
       null,
       false,
@@ -173,77 +216,85 @@ describe('admin gallery routes', () => {
     });
   });
 
-  it('PUT /api/v1/admin/:id', async () => {
+  it('PUT /api/v1/admin/:id updates a gallery post and persists the change', async () => {
     const [agent] = await registerAndLogin();
-    const resp = await agent.post('/api/v1/admin').send({
+    const createResp = await agent.post('/api/v1/admin').send({
       title: 'test title',
       description: 'test description',
       image_url: 'test image url',
       category: 'test category',
-      price: 'test price',
+      price: '100',
       author_id: 1,
       num_imgs: 1,
       public_id: 'test public id',
       hide: true,
-      sold: true,
-      selling_link: 'http://www.website.com',
+      sold: false,
+      link: 'http://www.website.com',
     });
+    expect(createResp.status).toBe(200);
 
-    expect(resp.status).toBe(200);
-    const resp2 = await agent.post('/api/v1/admin').send({
-      author_id: 1,
-      title: 'Test title is updated',
+    const postId = createResp.body.id;
+    const updatedPost = {
+      ...createResp.body,
+      title: 'test title is updated',
       description: 'test description is updated',
       image_url: 'test image url is updated',
       category: 'test category is updated',
-      price: 'test price is updated',
-      num_imgs: 1,
-      public_id: 'test public id',
-      hide: true,
-      sold: false,
-      selling_link: '',
-    });
-
-    expect(resp.status).toBe(200);
-    expect(resp.body).toEqual({
-      id: expect.any(String),
-      created_at: expect.any(String),
-      title: 'test title',
-      description: 'test description',
-      image_url: 'test image url',
-      category: 'test category',
-      price: 'test price',
-      author_id: expect.any(String),
-      num_imgs: expect.any(String),
-      public_id: expect.any(String),
-      hide: expect.any(Boolean),
+      price: '150',
+      num_imgs: 2,
+      public_id: 'test public id is updated',
+      hide: false,
       sold: true,
-      selling_link: null,
-      originalPrice: null,
+      link: 'http://www.updated-website.com',
+    };
+
+    const updateResp = await agent
+      .put(`/api/v1/admin/${postId}`)
+      .send({ id: postId, post: updatedPost });
+
+    expect(updateResp.status).toBe(200);
+    expect(updateResp.body).toEqual({
+      id: postId,
+      created_at: createResp.body.created_at,
+      title: 'test title is updated',
+      description: 'test description is updated',
+      image_url: 'test image url is updated',
+      category: 'test category is updated',
+      price: '150',
+      author_id: createResp.body.author_id,
+      num_imgs: '2',
+      public_id: 'test public id is updated',
+      hide: false,
+      sold: true,
+      selling_link: 'http://www.updated-website.com',
+      originalPrice: '150',
       discountedPrice: null,
       isDeleted: false,
       deletedAt: null,
     });
-    expect(resp2.status).toBe(200);
-    expect(resp2.body).toEqual({
-      id: expect.any(String),
-      created_at: expect.any(String),
-      title: 'Test title is updated',
-      description: 'test description is updated',
-      image_url: 'test image url is updated',
-      category: 'test category is updated',
-      price: 'test price is updated',
-      author_id: expect.any(String),
-      num_imgs: expect.any(String),
-      public_id: expect.any(String),
-      hide: expect.any(Boolean),
-      sold: false,
-      selling_link: null,
-      originalPrice: null,
-      discountedPrice: null,
-      isDeleted: false,
-      deletedAt: null,
+
+    // The response is built from RETURNING *, so re-read to prove it was committed
+    const readResp = await agent.get(`/api/v1/admin/${postId}`);
+    expect(readResp.status).toBe(200);
+    expect(readResp.body).toMatchObject({
+      title: 'test title is updated',
+      price: '150',
+      sold: true,
+      hide: false,
+      selling_link: 'http://www.updated-website.com',
     });
+  });
+
+  it('PUT /api/v1/admin/:id returns 403 for a post that does not exist', async () => {
+    const [agent] = await registerAndLogin();
+
+    const resp = await agent.put('/api/v1/admin/999999').send({
+      id: 999999,
+      post: { title: 'nope', description: 'nope', price: '1' },
+    });
+
+    expect(resp.status).toBe(403);
+    expect(resp.body.message).toBe('You do not have access to this page');
   });
 
   it('POST /api/v1/admin', async () => {
@@ -275,7 +326,7 @@ describe('admin gallery routes', () => {
       selling_link: null,
       sold: false,
       hide: false,
-      originalPrice: null,
+      originalPrice: 'test price',
       discountedPrice: null,
       isDeleted: false,
       deletedAt: null,
@@ -634,6 +685,8 @@ describe('admin gallery routes', () => {
       user.id,
       'public_id',
       1,
+      null,
+      '100',
       false,
       null,
       false,
@@ -665,6 +718,8 @@ describe('admin gallery routes', () => {
       user.id,
       'public_id',
       1,
+      null,
+      '100',
       false,
       null,
       false,
