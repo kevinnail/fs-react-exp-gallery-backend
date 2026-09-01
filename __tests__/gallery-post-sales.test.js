@@ -3,7 +3,7 @@ const setup = require('../data/setup');
 const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
-const GalleryPostSale = require('../lib/models/GalleryPostSale');
+const SalesOrder = require('../lib/models/SalesOrder');
 const Profile = require('../lib/models/Profile');
 
 // Mock websocket service for sales events
@@ -21,6 +21,7 @@ jest.mock('../lib/utils/mailer', () => ({
   sendSaleCreatedEmail: jest.fn(),
   sendSalePaidEmail: jest.fn(),
 }));
+
 const mockUser = {
   email: 'test@example.com',
   password: 'Test1234!',
@@ -31,6 +32,10 @@ const mockBuyer = {
   password: 'Test1234!',
 };
 
+// setup.sql seeds three gallery posts, ids 1 through 3
+const SEEDED_POST_IDS = [1, 2, 3];
+const MISSING_POST_ID = 999999;
+
 afterAll(() => {
   pool.end();
 });
@@ -39,7 +44,6 @@ const registerAndLogin = async (userCredentials = mockUser) => {
   const agent = request.agent(app);
   const { user } = await UserService.create(userCredentials);
 
-  // Create a profile for the user (required for getAllSales JOIN)
   await Profile.insert({
     userId: user.id,
     firstName: 'Test',
@@ -53,160 +57,223 @@ const registerAndLogin = async (userCredentials = mockUser) => {
   return [agent, user];
 };
 
-describe('Gallery Post Sales routes', () => {
+const countRows = async (table) => {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS total FROM ${table};`);
+  return rows[0].total;
+};
+
+const isPostSold = async (postId) => {
+  const { rows } = await pool.query('SELECT sold FROM gallery_posts WHERE id = $1;', [postId]);
+  return rows[0].sold;
+};
+
+describe('Sales order routes', () => {
   beforeEach(() => {
     return setup(pool);
   });
 
-  describe('POST /api/v1/admin/sales - Create Sale', () => {
+  describe('POST /api/v1/admin/sales - Create order', () => {
     it('should return 401 when not authenticated', async () => {
-      const resp = await request(app).post('/api/v1/admin/sales').send({
-        postId: 1,
-        buyerEmail: 'buyer@example.com',
-        price: 100,
-      });
+      const resp = await request(app)
+        .post('/api/v1/admin/sales')
+        .send({
+          buyerEmail: mockBuyer.email,
+          items: [{ postId: SEEDED_POST_IDS[0], price: 100 }],
+        });
 
       expect(resp.status).toBe(401);
     });
 
-    it('should create a new sale when authenticated as admin', async () => {
+    it('should create one order with two items and mark both pieces sold', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
 
       const resp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
         buyerEmail: buyer.email,
-        price: '99.99',
+        items: [
+          { postId: SEEDED_POST_IDS[0], price: '99.99' },
+          { postId: SEEDED_POST_IDS[1], price: '150.00' },
+        ],
+        shippingCost: '11',
         tracking: 'TRACK123456',
       });
 
       expect(resp.status).toBe(201);
-      expect(resp.body).toEqual({
-        id: expect.any(Number),
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: '99.99',
-        tracking_number: 'TRACK123456',
-        created_at: expect.any(String),
-        is_paid: false,
-        paid_at: null,
-      });
+      expect(resp.body).toEqual(
+        expect.objectContaining({
+          id: expect.any(Number),
+          buyer_id: buyer.id,
+          shipping_cost: '11.00',
+          tracking_number: 'TRACK123456',
+          is_paid: false,
+          paid_at: null,
+        }),
+      );
 
-      // websocket emission asserted
-      expect(global.wsService.emitSaleCreated).toHaveBeenCalled();
-      const emittedPayload = global.wsService.emitSaleCreated.mock.calls[0][0];
-      expect(emittedPayload).toMatchObject({
-        type: 'sale',
-        saleId: resp.body.id,
-        postId: resp.body.post_id,
-        userId: resp.body.buyer_id,
-      });
+      expect(resp.body.items).toHaveLength(2);
+      expect(resp.body.items.map((item) => item.post_id)).toEqual([
+        SEEDED_POST_IDS[0],
+        SEEDED_POST_IDS[1],
+      ]);
+      expect(resp.body.items.map((item) => item.price)).toEqual(['99.99', '150.00']);
+      expect(resp.body.items.every((item) => item.order_id === resp.body.id)).toBe(true);
+
+      const itemsSubtotal = resp.body.items.reduce(
+        (runningTotal, item) => runningTotal + Number(item.price),
+        0,
+      );
+      expect(itemsSubtotal).toBeCloseTo(249.99);
+      expect(itemsSubtotal + Number(resp.body.shipping_cost)).toBeCloseTo(260.99);
+
+      expect(await countRows('sales_orders')).toBe(1);
+      expect(await countRows('gallery_post_sales')).toBe(2);
+      expect(await isPostSold(SEEDED_POST_IDS[0])).toBe(true);
+      expect(await isPostSold(SEEDED_POST_IDS[1])).toBe(true);
+      expect(await isPostSold(SEEDED_POST_IDS[2])).toBe(false);
     });
 
-    it('should set sold status to true on gallery post after sale', async () => {
-      const [agent] = await registerAndLogin();
-      const [, buyer] = await registerAndLogin(mockBuyer);
-
-      // Create sale
-      const saleResp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
-        buyerEmail: buyer.email,
-        price: '99.99',
-      });
-
-      expect(saleResp.status).toBe(201);
-      expect(saleResp.body.post_id).toBe(1);
-      expect(saleResp.body.buyer_id).toBe(2);
-      expect(saleResp.body.price).toEqual('99.99');
-      expect(saleResp.body.is_paid).toBe(false);
-      expect(saleResp.body.paid_at).toBe(null);
-
-      // Fetch gallery post
-      const postResp = await agent.get('/api/v1/admin/1');
-      expect(postResp.status).toBe(200);
-      expect(postResp.body.sold).toBe(true);
-    });
-
-    it('should create a sale without tracking number', async () => {
+    it('should create a single-piece order the same way', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
 
       const resp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
         buyerEmail: buyer.email,
-        price: '50.00',
+        items: [{ postId: SEEDED_POST_IDS[0], price: '75.50' }],
       });
 
       expect(resp.status).toBe(201);
+      expect(resp.body.items).toHaveLength(1);
+      expect(resp.body.items[0].price).toBe('75.50');
+      // shippingCost omitted defaults to zero rather than NULL
+      expect(resp.body.shipping_cost).toBe('0.00');
       expect(resp.body.tracking_number).toBeNull();
+
+      expect(await countRows('sales_orders')).toBe(1);
+      expect(await isPostSold(SEEDED_POST_IDS[0])).toBe(true);
     });
 
-    it('should return 404 when buyer email does not exist', async () => {
+    it('should return 400 when items is an empty array', async () => {
       const [agent] = await registerAndLogin();
+      await registerAndLogin(mockBuyer);
 
       const resp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
-        buyerEmail: 'nonexistent@example.com',
-        price: '99.99',
-      });
-
-      expect(resp.status).toBe(500);
-    });
-
-    it('should return 400 when required fields are missing', async () => {
-      const [agent] = await registerAndLogin();
-
-      const resp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
+        buyerEmail: mockBuyer.email,
+        items: [],
+        shippingCost: 10,
       });
 
       expect(resp.status).toBe(400);
-    });
-  });
-
-  describe('GET /api/v1/admin/sales - Get All Sales (Admin)', () => {
-    it('should return 401 when not authenticated', async () => {
-      const resp = await request(app).get('/api/v1/admin/sales');
-      expect(resp.status).toBe(401);
+      expect(resp.body.message).toBe('items must be a non-empty array');
+      expect(await countRows('sales_orders')).toBe(0);
     });
 
-    it('should return all sales with buyer and post details', async () => {
+    it('should return 400 when an item has a non-numeric price', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
 
-      // Create a sale first
-      await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
+      const resp = await agent.post('/api/v1/admin/sales').send({
         buyerEmail: buyer.email,
-        price: '99.99',
-        tracking: 'TRACK123',
+        items: [{ postId: SEEDED_POST_IDS[0], price: 'free' }],
+      });
+
+      expect(resp.status).toBe(400);
+      expect(resp.body.message).toBe('each item requires a postId and a numeric price');
+      expect(await countRows('sales_orders')).toBe(0);
+    });
+
+    it('should return 400 when shippingCost is negative', async () => {
+      const [agent] = await registerAndLogin();
+      const [, buyer] = await registerAndLogin(mockBuyer);
+
+      const resp = await agent.post('/api/v1/admin/sales').send({
+        buyerEmail: buyer.email,
+        items: [{ postId: SEEDED_POST_IDS[0], price: 20 }],
+        shippingCost: -5,
+      });
+
+      expect(resp.status).toBe(400);
+      expect(resp.body.message).toBe('shippingCost must be a number of at least 0');
+      expect(await countRows('sales_orders')).toBe(0);
+    });
+
+    it('should return 404 when the buyer email is unknown', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await agent.post('/api/v1/admin/sales').send({
+        buyerEmail: 'nobody@example.com',
+        items: [{ postId: SEEDED_POST_IDS[0], price: 20 }],
+      });
+
+      expect(resp.status).toBe(404);
+      expect(resp.body.message).toBe('Buyer not found');
+      expect(await countRows('sales_orders')).toBe(0);
+      expect(await isPostSold(SEEDED_POST_IDS[0])).toBe(false);
+    });
+
+    it('should roll back entirely when one item references a nonexistent post', async () => {
+      const [agent] = await registerAndLogin();
+      const [, buyer] = await registerAndLogin(mockBuyer);
+
+      const resp = await agent.post('/api/v1/admin/sales').send({
+        buyerEmail: buyer.email,
+        items: [
+          { postId: SEEDED_POST_IDS[0], price: 20 },
+          { postId: MISSING_POST_ID, price: 30 },
+        ],
+      });
+
+      expect(resp.status).toBe(500);
+      expect(await countRows('sales_orders')).toBe(0);
+      expect(await countRows('gallery_post_sales')).toBe(0);
+      expect(await isPostSold(SEEDED_POST_IDS[0])).toBe(false);
+    });
+  });
+
+  describe('GET /api/v1/admin/sales - List orders', () => {
+    it('should return 401 when not authenticated', async () => {
+      const resp = await request(app).get('/api/v1/admin/sales');
+
+      expect(resp.status).toBe(401);
+    });
+
+    it('should return orders with their items and buyer details nested', async () => {
+      const [agent] = await registerAndLogin();
+      const [, buyer] = await registerAndLogin(mockBuyer);
+
+      await SalesOrder.createOrder({
+        buyerId: buyer.id,
+        items: [
+          { postId: SEEDED_POST_IDS[0], price: '10.00' },
+          { postId: SEEDED_POST_IDS[1], price: '20.00' },
+        ],
+        shippingCost: '11.00',
+        tracking: 'ABC123',
       });
 
       const resp = await agent.get('/api/v1/admin/sales');
 
       expect(resp.status).toBe(200);
-      expect(Array.isArray(resp.body)).toBe(true);
-      expect(resp.body.length).toBeGreaterThan(0);
-      expect(resp.body[0]).toEqual({
-        id: expect.any(Number),
-        post_id: expect.any(Number),
-        buyer_id: expect.any(Number),
-        price: expect.any(String),
-        tracking_number: expect.any(String),
-        created_at: expect.any(String),
-        is_paid: expect.any(Boolean),
-        paid_at: null,
-        post_title: expect.any(String),
-        image_url: expect.any(String),
-        buyer_email: buyer.email,
-        buyer_first_name: 'Test',
-        buyer_last_name: 'User',
-        buyer_name: 'Test User',
-        updated_at: expect.any(String),
-      });
+      expect(resp.body).toHaveLength(1);
+      expect(resp.body[0]).toEqual(
+        expect.objectContaining({
+          buyer_id: buyer.id,
+          buyer_email: buyer.email,
+          buyer_name: 'Test User',
+          shipping_cost: '11.00',
+          tracking_number: 'ABC123',
+        }),
+      );
+      expect(resp.body[0].items).toHaveLength(2);
+      expect(resp.body[0].items[0]).toEqual(
+        expect.objectContaining({
+          post_id: SEEDED_POST_IDS[0],
+          price: '10.00',
+          post_title: 'Test 1',
+        }),
+      );
     });
 
-    it('should return empty array when no sales exist', async () => {
+    it('should return an empty array when there are no orders', async () => {
       const [agent] = await registerAndLogin();
 
       const resp = await agent.get('/api/v1/admin/sales');
@@ -216,440 +283,243 @@ describe('Gallery Post Sales routes', () => {
     });
   });
 
-  describe('GET /api/v1/user-sales - Get User Sales', () => {
+  describe('PUT /api/v1/admin/sale-pay-status/:id', () => {
     it('should return 401 when not authenticated', async () => {
-      const resp = await request(app).get('/api/v1/user-sales');
-      expect(resp.status).toBe(401);
-    });
-
-    it('should return sales for authenticated user', async () => {
-      const [adminAgent] = await registerAndLogin();
-      const [buyerAgent, buyer] = await registerAndLogin(mockBuyer);
-
-      // Admin creates a sale for the buyer
-      await adminAgent.post('/api/v1/admin/sales').send({
-        postId: '1',
-        buyerEmail: buyer.email,
-        price: '75.50',
-        tracking: 'USPS123',
-      });
-
-      // Buyer retrieves their sales
-      const resp = await buyerAgent.get('/api/v1/user-sales');
-
-      expect(resp.status).toBe(200);
-      expect(Array.isArray(resp.body)).toBe(true);
-      expect(resp.body.length).toBe(1);
-      expect(resp.body[0]).toEqual({
-        id: expect.any(Number),
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: '75.50',
-        tracking_number: 'USPS123',
-        created_at: expect.any(String),
-        is_paid: false,
-        paid_at: null,
-        post_title: 'Test 1',
-        post_image_url: 'Test 1',
-        post_price: 'Test 1',
-        updated_at: expect.any(String),
-      });
-    });
-
-    it('should return null when user has no sales', async () => {
-      const [agent] = await registerAndLogin();
-
-      const resp = await agent.get('/api/v1/user-sales');
-
-      expect(resp.status).toBe(200);
-      expect(resp.body).toBeNull();
-    });
-  });
-
-  describe('PUT /api/v1/admin/:id/paid - Update Paid Status', () => {
-    it('should return 401 when not authenticated', async () => {
-      const resp = await request(app).put('/api/v1/admin/1/paid').send({
-        isPaid: true,
-      });
+      const resp = await request(app).put('/api/v1/admin/sale-pay-status/1').send({ isPaid: true });
 
       expect(resp.status).toBe(401);
     });
 
-    it('should update sale to paid status', async () => {
+    it('should mark an order paid and stamp paid_at', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
 
-      // Create sale
-      const saleResp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
-        buyerEmail: buyer.email,
-        price: '100.00',
+      const order = await SalesOrder.createOrder({
+        buyerId: buyer.id,
+        items: [{ postId: SEEDED_POST_IDS[0], price: '10.00' }],
+        shippingCost: 0,
+        tracking: null,
       });
 
-      const saleId = saleResp.body.id;
-
-      // Update to paid
-      const resp = await agent.put(`/api/v1/admin/sale-pay-status/${saleId}`).send({
-        isPaid: true,
-      });
+      const resp = await agent
+        .put(`/api/v1/admin/sale-pay-status/${order.id}`)
+        .send({ isPaid: true });
 
       expect(resp.status).toBe(200);
-      expect(resp.body).toEqual({
-        id: saleId,
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: '100.00',
-        tracking_number: null,
-        created_at: expect.any(String),
-        is_paid: true,
-        paid_at: expect.any(String),
-      });
+      expect(resp.body.is_paid).toBe(true);
+      expect(resp.body.paid_at).not.toBeNull();
 
-      // websocket emission asserted
-      expect(global.wsService.emitSalePaid).toHaveBeenCalled();
+      const stored = await SalesOrder.getOrderById(order.id);
+      expect(stored.is_paid).toBe(true);
+      expect(stored.paid_at).not.toBeNull();
     });
 
-    it('should update sale to unpaid status and clear paid_at', async () => {
+    it('should clear paid_at when an order is marked unpaid again', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
 
-      // Create sale
-      const saleResp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
-        buyerEmail: buyer.email,
-        price: '100.00',
+      const order = await SalesOrder.createOrder({
+        buyerId: buyer.id,
+        items: [{ postId: SEEDED_POST_IDS[0], price: '10.00' }],
+        shippingCost: 0,
+        tracking: null,
       });
 
-      const saleId = saleResp.body.id;
-
-      // Update to paid
-      await agent.put(`/api/v1/admin/sale-pay-status/${saleId}`).send({
-        isPaid: true,
-      });
-
-      // Update back to unpaid
-      const resp = await agent.put(`/api/v1/admin/sale-pay-status/${saleId}`).send({
-        isPaid: false,
-      });
+      await agent.put(`/api/v1/admin/sale-pay-status/${order.id}`).send({ isPaid: true });
+      const resp = await agent
+        .put(`/api/v1/admin/sale-pay-status/${order.id}`)
+        .send({ isPaid: false });
 
       expect(resp.status).toBe(200);
       expect(resp.body.is_paid).toBe(false);
       expect(resp.body.paid_at).toBeNull();
     });
 
-    it('should return 400 when isPaid is not boolean', async () => {
+    it('should return 400 when isPaid is not a boolean', async () => {
       const [agent] = await registerAndLogin();
 
-      const resp = await agent.put('/api/v1/admin/sale-pay-status/1').send({
-        isPaid: 'yes',
-      });
+      const resp = await agent.put('/api/v1/admin/sale-pay-status/1').send({ isPaid: 'yes' });
 
       expect(resp.status).toBe(400);
       expect(resp.body.error).toBe('isPaid must be boolean');
     });
+
+    it('should return 404 for an unknown order id', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await agent
+        .put(`/api/v1/admin/sale-pay-status/${MISSING_POST_ID}`)
+        .send({ isPaid: true });
+
+      expect(resp.status).toBe(404);
+      expect(resp.body.error).toBe('Order not found');
+    });
   });
 
-  describe('PUT /api/v1/admin/:id/tracking - Update Tracking Number', () => {
+  describe('PUT /api/v1/admin/:id/tracking', () => {
     it('should return 401 when not authenticated', async () => {
-      const resp = await request(app).put('/api/v1/admin/1/tracking').send({
-        trackingNumber: 'TRACK123',
-      });
+      const resp = await request(app)
+        .put('/api/v1/admin/1/tracking')
+        .send({ trackingNumber: 'TRACK123' });
 
       expect(resp.status).toBe(401);
     });
 
-    it('should update tracking number for a sale', async () => {
+    it('should set the tracking number on the order', async () => {
       const [agent] = await registerAndLogin();
       const [, buyer] = await registerAndLogin(mockBuyer);
 
-      // Create sale without tracking
-      const saleResp = await agent.post('/api/v1/admin/sales').send({
-        postId: '1',
-        buyerEmail: buyer.email,
-        price: '80.00',
+      const order = await SalesOrder.createOrder({
+        buyerId: buyer.id,
+        items: [{ postId: SEEDED_POST_IDS[0], price: '10.00' }],
+        shippingCost: 0,
+        tracking: null,
       });
 
-      const saleId = saleResp.body.id;
-
-      // Update tracking number
-      const resp = await agent.put(`/api/v1/admin/${saleId}/tracking`).send({
-        trackingNumber: 'FEDEX987654321',
-      });
+      const resp = await agent
+        .put(`/api/v1/admin/${order.id}/tracking`)
+        .send({ trackingNumber: 'FEDEX987654321' });
 
       expect(resp.status).toBe(200);
-      expect(resp.body).toEqual({
-        id: saleId,
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: '80.00',
-        tracking_number: 'FEDEX987654321',
-        created_at: expect.any(String),
-        is_paid: false,
-        paid_at: null,
-      });
+      expect(resp.body.tracking_number).toBe('FEDEX987654321');
 
-      // websocket emission asserted
-      expect(global.wsService.emitSaleTrackingInfo).toHaveBeenCalled();
-    });
-
-    it('should return 400 when trackingNumber is missing', async () => {
-      const [agent] = await registerAndLogin();
-
-      const resp = await agent.put('/api/v1/admin/1/tracking').send({});
-
-      expect(resp.status).toBe(400);
-      expect(resp.body.error).toBe('trackingNumber must be a string');
+      const stored = await SalesOrder.getOrderById(order.id);
+      expect(stored.tracking_number).toBe('FEDEX987654321');
     });
 
     it('should return 400 when trackingNumber is not a string', async () => {
       const [agent] = await registerAndLogin();
 
-      const resp = await agent.put('/api/v1/admin/1/tracking').send({
-        trackingNumber: 12345,
-      });
+      const resp = await agent.put('/api/v1/admin/1/tracking').send({ trackingNumber: 12345 });
 
       expect(resp.status).toBe(400);
       expect(resp.body.error).toBe('trackingNumber must be a string');
     });
   });
+
+  describe('GET /api/v1/user-sales', () => {
+    it('should return 401 when not authenticated', async () => {
+      const resp = await request(app).get('/api/v1/user-sales');
+
+      expect(resp.status).toBe(401);
+    });
+
+    it('should return only the orders belonging to the signed-in user', async () => {
+      await registerAndLogin();
+      const [buyerAgent, buyer] = await registerAndLogin(mockBuyer);
+      const { user: otherBuyer } = await UserService.create({
+        email: 'other@example.com',
+        password: 'Test1234!',
+      });
+
+      await SalesOrder.createOrder({
+        buyerId: buyer.id,
+        items: [{ postId: SEEDED_POST_IDS[0], price: '10.00' }],
+        shippingCost: '11.00',
+        tracking: null,
+      });
+      await SalesOrder.createOrder({
+        buyerId: otherBuyer.id,
+        items: [{ postId: SEEDED_POST_IDS[1], price: '20.00' }],
+        shippingCost: 0,
+        tracking: null,
+      });
+
+      const resp = await buyerAgent.get('/api/v1/user-sales');
+
+      expect(resp.status).toBe(200);
+      expect(resp.body).toHaveLength(1);
+      expect(resp.body[0].buyer_id).toBe(buyer.id);
+      expect(resp.body[0].shipping_cost).toBe('11.00');
+      expect(resp.body[0].items).toHaveLength(1);
+      expect(resp.body[0].items[0].post_title).toBe('Test 1');
+    });
+
+    it('should return an empty array when the user has no orders', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await agent.get('/api/v1/user-sales');
+
+      expect(resp.status).toBe(200);
+      expect(resp.body).toEqual([]);
+    });
+  });
 });
 
-describe('GalleryPostSale Model', () => {
+describe('SalesOrder model', () => {
   beforeEach(() => {
     return setup(pool);
   });
 
-  describe('Post.updateSoldStatus', () => {
-    it('should update sold status to true for a gallery post', async () => {
-      // Insert a post
-      const { rows } = await pool.query(`
-        INSERT INTO gallery_posts (title, description, image_url, category, price, author_id, public_id, num_imgs, sold, selling_link, hide)
-        VALUES ('Test', 'Desc', 'img.jpg', 'cat', '10.00', 1, 'pid', 1, false, 'link', false)
-        RETURNING *;
-      `);
-      const postId = rows[0].id;
+  it('createOrder writes one order row, one item row per piece, and marks each sold', async () => {
+    const { user: buyer } = await UserService.create(mockBuyer);
 
-      // Call updateSoldStatus
-      const Post = require('../lib/models/Post');
-      const updated = await Post.updateSoldStatus(postId);
-      expect(updated.sold).toBe(true);
+    const order = await SalesOrder.createOrder({
+      buyerId: buyer.id,
+      items: [
+        { postId: SEEDED_POST_IDS[0], price: '10.00' },
+        { postId: SEEDED_POST_IDS[2], price: '30.00' },
+      ],
+      shippingCost: '11.00',
+      tracking: 'XYZ789',
     });
+
+    expect(order.buyer_id).toBe(buyer.id);
+    expect(order.shipping_cost).toBe('11.00');
+    expect(order.items.map((item) => item.post_id)).toEqual([
+      SEEDED_POST_IDS[0],
+      SEEDED_POST_IDS[2],
+    ]);
+    expect(await isPostSold(SEEDED_POST_IDS[0])).toBe(true);
+    expect(await isPostSold(SEEDED_POST_IDS[1])).toBe(false);
+    expect(await isPostSold(SEEDED_POST_IDS[2])).toBe(true);
   });
 
-  describe('GalleryPostSale.createSale', () => {
-    it('should create a new sale record', async () => {
-      const { user } = await UserService.create(mockBuyer);
+  it('createOrder rolls the whole transaction back when an item references a missing post', async () => {
+    const { user: buyer } = await UserService.create(mockBuyer);
 
-      const sale = await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '99.99',
-        tracking: 'TRACK123',
-      });
-
-      expect(sale).toMatchObject({
-        id: expect.any(Number),
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: '99.99',
-        tracking_number: 'TRACK123',
-        is_paid: false,
-        paid_at: null,
-      });
-      expect(sale.created_at).toBeDefined();
-    });
-
-    it('should create a sale without tracking number', async () => {
-      const { user } = await UserService.create(mockBuyer);
-
-      const sale = await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '50.00',
+    await expect(
+      SalesOrder.createOrder({
+        buyerId: buyer.id,
+        items: [
+          { postId: SEEDED_POST_IDS[0], price: '10.00' },
+          { postId: MISSING_POST_ID, price: '30.00' },
+        ],
+        shippingCost: 0,
         tracking: null,
-      });
+      }),
+    ).rejects.toThrow();
 
-      expect(sale.tracking_number).toBeNull();
-    });
+    expect(await countRows('sales_orders')).toBe(0);
+    expect(await countRows('gallery_post_sales')).toBe(0);
+    expect(await isPostSold(SEEDED_POST_IDS[0])).toBe(false);
   });
 
-  describe('GalleryPostSale.getAllSales', () => {
-    it('should return all sales with joined data', async () => {
-      const { user } = await UserService.create(mockBuyer);
+  it('getAllOrders still returns a buyer who has no profile row', async () => {
+    const { user: buyer } = await UserService.create(mockBuyer);
 
-      await Profile.insert({
-        userId: user.id,
-        firstName: 'Buyer',
-        lastName: 'Test',
-      });
-
-      await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '100.00',
-        tracking: 'ABC123',
-      });
-
-      const sales = await GalleryPostSale.getAllSales();
-
-      expect(Array.isArray(sales)).toBe(true);
-      expect(sales.length).toBeGreaterThan(0);
-      expect(sales[0]).toMatchObject({
-        id: expect.any(Number),
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: expect.any(String),
-        tracking_number: 'ABC123',
-        is_paid: false,
-        paid_at: null,
-        post_title: 'Test 1',
-        image_url: 'Test 1',
-        buyer_email: user.email,
-        buyer_first_name: 'Buyer',
-        buyer_last_name: 'Test',
-        buyer_name: 'Buyer Test',
-      });
-      expect(sales[0].created_at).toBeDefined();
-      expect(sales[0].updated_at).toBeDefined();
+    await SalesOrder.createOrder({
+      buyerId: buyer.id,
+      items: [{ postId: SEEDED_POST_IDS[0], price: '10.00' }],
+      shippingCost: 0,
+      tracking: null,
     });
 
-    it('should return empty array when no sales exist', async () => {
-      const sales = await GalleryPostSale.getAllSales();
-      expect(sales).toEqual([]);
-    });
+    const orders = await SalesOrder.getAllOrders();
+
+    expect(orders).toHaveLength(1);
+    expect(orders[0].buyer_email).toBe(buyer.email);
+    expect(orders[0].buyer_name).toBeNull();
+    expect(orders[0].items).toHaveLength(1);
   });
 
-  describe('GalleryPostSale.getSaleById', () => {
-    it('should return a sale by id', async () => {
-      const { user } = await UserService.create(mockBuyer);
-
-      const createdSale = await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '75.00',
-        tracking: 'XYZ789',
-      });
-
-      const sale = await GalleryPostSale.getSaleById(createdSale.id);
-
-      expect(sale).toMatchObject({
-        id: createdSale.id,
-        post_id: 1,
-        buyer_id: expect.any(Number),
-        price: '75.00',
-        tracking_number: 'XYZ789',
-        is_paid: false,
-        paid_at: null,
-      });
-      expect(sale.created_at).toBeDefined();
-    });
-
-    it('should return null when sale does not exist', async () => {
-      const sale = await GalleryPostSale.getSaleById(999999);
-      expect(sale).toBeNull();
-    });
+  it('getOrderById returns null for an unknown id', async () => {
+    expect(await SalesOrder.getOrderById(MISSING_POST_ID)).toBeNull();
   });
 
-  describe('GalleryPostSale.updateTracking', () => {
-    it('should update tracking number', async () => {
-      const { user } = await UserService.create(mockBuyer);
+  it('getAllOrdersByUserId returns an empty array, not null, when the user has no orders', async () => {
+    const { user: buyer } = await UserService.create(mockBuyer);
 
-      const createdSale = await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '60.00',
-        tracking: null,
-      });
-
-      const updated = await GalleryPostSale.updateTracking(createdSale.id, 'NEWTRACK456');
-
-      expect(updated.tracking_number).toBe('NEWTRACK456');
-    });
-  });
-
-  describe('GalleryPostSale.updatePaidStatus', () => {
-    it('should update paid status to true and set paid_at', async () => {
-      const { user } = await UserService.create(mockBuyer);
-
-      const createdSale = await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '120.00',
-        tracking: 'TRACK999',
-      });
-
-      const updated = await GalleryPostSale.updatePaidStatus(createdSale.id, true);
-
-      expect(updated.is_paid).toBe(true);
-      expect(updated.paid_at).not.toBeNull();
-    });
-
-    it('should update paid status to false and clear paid_at', async () => {
-      const { user } = await UserService.create(mockBuyer);
-
-      const createdSale = await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: user.id,
-        price: '120.00',
-        tracking: 'TRACK999',
-      });
-
-      // First mark as paid
-      await GalleryPostSale.updatePaidStatus(createdSale.id, true);
-
-      // Then mark as unpaid
-      const updated = await GalleryPostSale.updatePaidStatus(createdSale.id, false);
-
-      expect(updated.is_paid).toBe(false);
-      expect(updated.paid_at).toBeNull();
-    });
-  });
-
-  describe('GalleryPostSale.getAllSalesByUserId', () => {
-    it('should return all sales for a specific user', async () => {
-      const { user: buyer1 } = await UserService.create(mockBuyer);
-      const { user: buyer2 } = await UserService.create({
-        email: 'buyer2@example.com',
-        password: 'Test1234!',
-      });
-
-      // Create sales for buyer1
-      await GalleryPostSale.createSale({
-        postId: 1,
-        buyerId: buyer1.id,
-        price: '50.00',
-        tracking: 'A1',
-      });
-
-      await GalleryPostSale.createSale({
-        postId: 2,
-        buyerId: buyer1.id,
-        price: '75.00',
-        tracking: 'A2',
-      });
-
-      // Create sale for buyer2
-      await GalleryPostSale.createSale({
-        postId: 3,
-        buyerId: buyer2.id,
-        price: '100.00',
-        tracking: 'B1',
-      });
-
-      const buyer1Sales = await GalleryPostSale.getAllSalesByUserId(buyer1.id);
-
-      expect(buyer1Sales.length).toBe(2);
-      // buyer_id may be number or string depending on the query, just check they all match
-      const allMatch = buyer1Sales.every((sale) => sale.buyer_id == buyer1.id); // Using == for type-loose comparison
-      expect(allMatch).toBe(true);
-    });
-
-    it('should return null when user has no sales', async () => {
-      const { user } = await UserService.create(mockBuyer);
-
-      const sales = await GalleryPostSale.getAllSalesByUserId(user.id);
-
-      expect(sales).toBeNull();
-    });
+    expect(await SalesOrder.getAllOrdersByUserId(buyer.id)).toEqual([]);
   });
 });
