@@ -102,7 +102,7 @@ describe('Sales order routes', () => {
       expect(resp.body).toEqual(
         expect.objectContaining({
           id: expect.any(Number),
-          buyer_id: buyer.id,
+          buyer_id: Number(buyer.id),
           shipping_cost: '11.00',
           tracking_number: 'TRACK123456',
           is_paid: false,
@@ -256,7 +256,7 @@ describe('Sales order routes', () => {
       expect(resp.body).toHaveLength(1);
       expect(resp.body[0]).toEqual(
         expect.objectContaining({
-          buyer_id: buyer.id,
+          buyer_id: Number(buyer.id),
           buyer_email: buyer.email,
           buyer_name: 'Test User',
           shipping_cost: '11.00',
@@ -429,7 +429,7 @@ describe('Sales order routes', () => {
 
       expect(resp.status).toBe(200);
       expect(resp.body).toHaveLength(1);
-      expect(resp.body[0].buyer_id).toBe(buyer.id);
+      expect(resp.body[0].buyer_id).toBe(Number(buyer.id));
       expect(resp.body[0].shipping_cost).toBe('11.00');
       expect(resp.body[0].items).toHaveLength(1);
       expect(resp.body[0].items[0].post_title).toBe('Test 1');
@@ -464,7 +464,7 @@ describe('SalesOrder model', () => {
       tracking: 'XYZ789',
     });
 
-    expect(order.buyer_id).toBe(buyer.id);
+    expect(order.buyer_id).toBe(Number(buyer.id));
     expect(order.shipping_cost).toBe('11.00');
     expect(order.items.map((item) => item.post_id)).toEqual([
       SEEDED_POST_IDS[0],
