@@ -1,9 +1,5 @@
 -- One-off backfill for the deployed database. Run by hand, once.
 --
--- Run the whole file in one execution (in Beekeeper Studio, paste it all into one
--- query tab and run that tab). It opens with BEGIN and ends with COMMIT, so running it a
--- statement at a time leaves an open transaction holding locks.
---
 -- Moves buyer_id / is_paid / paid_at / tracking_number off gallery_post_sales and onto
 -- a new sales_orders parent. Every existing sale becomes its own single-item order with
 -- shipping_cost 0, since shipping was previously folded into the piece price.
