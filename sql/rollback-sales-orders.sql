@@ -1,6 +1,10 @@
 -- Emergency down-migration for backfill-sales-orders.sql. Run by hand, only to get the
 -- database back to the shape v1.0.0 code expects.
 --
+-- Run the whole file in one execution (in Beekeeper Studio, paste it all into one
+-- query tab and run that tab). It opens with BEGIN and ends with COMMIT, so running it a
+-- statement at a time leaves an open transaction holding locks.
+--
 -- Run this BEFORE deploying v1.0.0 code, not after. Old code against the new schema fails
 -- on every sales route.
 --
