@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS auction_results CASCADE;
 DROP TABLE IF EXISTS bids CASCADE;
 DROP TABLE IF EXISTS auction_notifications CASCADE;
 DROP TABLE IF EXISTS gallery_post_sales CASCADE;
+DROP TABLE IF EXISTS sales_orders CASCADE;
 DROP TABLE IF EXISTS error_logs CASCADE;
 
 CREATE TABLE users_admin (
@@ -146,17 +147,28 @@ CREATE TABLE auction_notifications (
   is_read BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE gallery_post_sales (
+CREATE TABLE sales_orders (
   id SERIAL PRIMARY KEY,
-  post_id INTEGER NOT NULL REFERENCES gallery_posts(id),
   buyer_id INTEGER NOT NULL REFERENCES users_admin(id),
-  price NUMERIC(10,2) NOT NULL,
+  shipping_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
   tracking_number TEXT,
   is_paid BOOLEAN NOT NULL DEFAULT false,
   paid_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE gallery_post_sales (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES sales_orders(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES gallery_posts(id),
+  price NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX sales_orders_buyer_id_idx ON sales_orders(buyer_id);
+CREATE INDEX gallery_post_sales_order_id_idx ON gallery_post_sales(order_id);
+CREATE INDEX gallery_post_sales_post_id_idx ON gallery_post_sales(post_id);
 
 CREATE TABLE error_logs (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

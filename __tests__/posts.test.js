@@ -675,7 +675,7 @@ describe('admin gallery routes', () => {
   it('PUT /api/v1/admin/:id/tracking should update tracking number and send email (success)', async () => {
     const [agent, user] = await registerAndLogin();
     const Post = require('../lib/models/Post');
-    const GalleryPostSale = require('../lib/models/GalleryPostSale');
+    const SalesOrder = require('../lib/models/SalesOrder');
     const post = await Post.postNewPost(
       'Tracking Test',
       'desc',
@@ -691,14 +691,14 @@ describe('admin gallery routes', () => {
       null,
       false,
     );
-    const sale = await GalleryPostSale.createSale({
-      postId: post.id,
+    const order = await SalesOrder.createOrder({
       buyerId: user.id,
-      price: '100',
+      items: [{ postId: post.id, price: '100' }],
+      shippingCost: 0,
       tracking: null,
     });
     const trackingNumber = 'TRACK123';
-    const resp = await agent.put(`/api/v1/admin/${sale.id}/tracking`).send({ trackingNumber });
+    const resp = await agent.put(`/api/v1/admin/${order.id}/tracking`).send({ trackingNumber });
     expect(resp.status).toBe(200);
     expect(resp.body.tracking_number).toBe(trackingNumber);
     const { sendTrackingEmail } = require('../lib/utils/mailer');
@@ -708,7 +708,7 @@ describe('admin gallery routes', () => {
   it('PUT /api/v1/admin/:id/tracking should return 400 if trackingNumber is missing or not a string', async () => {
     const [agent, user] = await registerAndLogin();
     const Post = require('../lib/models/Post');
-    const GalleryPostSale = require('../lib/models/GalleryPostSale');
+    const SalesOrder = require('../lib/models/SalesOrder');
     const post = await Post.postNewPost(
       'Tracking Test',
       'desc',
@@ -724,17 +724,17 @@ describe('admin gallery routes', () => {
       null,
       false,
     );
-    const sale = await GalleryPostSale.createSale({
-      postId: post.id,
+    const order = await SalesOrder.createOrder({
       buyerId: user.id,
-      price: '100',
+      items: [{ postId: post.id, price: '100' }],
+      shippingCost: 0,
       tracking: null,
     });
-    const resp1 = await agent.put(`/api/v1/admin/${sale.id}/tracking`).send({});
+    const resp1 = await agent.put(`/api/v1/admin/${order.id}/tracking`).send({});
     expect(resp1.status).toBe(400);
     expect(resp1.body).toEqual({ error: 'trackingNumber must be a string' });
     const resp2 = await agent
-      .put(`/api/v1/admin/${sale.id}/tracking`)
+      .put(`/api/v1/admin/${order.id}/tracking`)
       .send({ trackingNumber: 123 });
     expect(resp2.status).toBe(400);
     expect(resp2.body).toEqual({ error: 'trackingNumber must be a string' });
