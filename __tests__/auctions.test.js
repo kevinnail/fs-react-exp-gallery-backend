@@ -91,8 +91,16 @@ describe('Auction routes', () => {
 
   // -----------------------------------------------------------
   describe('GET /api/v1/auctions/live', () => {
+    let creatorId;
+
+    beforeEach(async () => {
+      const { user } = await UserService.create(mockUser);
+      creatorId = user.id;
+    });
+
     const insertAuction = (overrides) =>
       Auction.insert({
+        creatorId,
         title: 'Lot',
         description: 'desc',
         startPrice: 10,
