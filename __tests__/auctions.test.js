@@ -90,6 +90,50 @@ describe('Auction routes', () => {
   });
 
   // -----------------------------------------------------------
+  describe('GET /api/v1/auctions/live', () => {
+    const insertAuction = (overrides) =>
+      Auction.insert({
+        title: 'Lot',
+        description: 'desc',
+        startPrice: 10,
+        buyNowPrice: 100,
+        startTime: new Date(Date.now() - 3600000),
+        endTime: new Date(Date.now() + 3600000),
+        ...overrides,
+      });
+
+    it('returns only active auctions that have not ended, soonest first, without auth', async () => {
+      const endingLater = await insertAuction({
+        title: 'Ending later',
+        endTime: new Date(Date.now() + 7200000),
+      });
+      const endingSooner = await insertAuction({
+        title: 'Ending sooner',
+        endTime: new Date(Date.now() + 1800000),
+      });
+      await insertAuction({ title: 'Closed', isActive: false });
+      // end time passed while the server was down, so the flag was never flipped
+      await insertAuction({ title: 'Expired but unswept', endTime: new Date(Date.now() - 60000) });
+
+      const res = await request(app).get('/api/v1/auctions/live');
+
+      expect(res.status).toBe(200);
+      expect(res.body.map((auction) => auction.id)).toEqual([endingSooner.id, endingLater.id]);
+      expect(res.body[0]).toHaveProperty('title', 'Ending sooner');
+    });
+
+    it('returns an empty array when no auction is live', async () => {
+      await insertAuction({ title: 'Closed', isActive: false });
+      await insertAuction({ title: 'Expired but unswept', endTime: new Date(Date.now() - 60000) });
+
+      const res = await request(app).get('/api/v1/auctions/live');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([]);
+    });
+  });
+
+  // -----------------------------------------------------------
   describe('GET /api/v1/auctions/:id', () => {
     it('returns 401 when not authenticated', async () => {
       const res = await request(app).get('/api/v1/auctions/1');
