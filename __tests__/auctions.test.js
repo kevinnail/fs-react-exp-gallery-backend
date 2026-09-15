@@ -90,6 +90,58 @@ describe('Auction routes', () => {
   });
 
   // -----------------------------------------------------------
+  describe('GET /api/v1/auctions/live', () => {
+    let creatorId;
+
+    beforeEach(async () => {
+      const { user } = await UserService.create(mockUser);
+      creatorId = user.id;
+    });
+
+    const insertAuction = (overrides) =>
+      Auction.insert({
+        creatorId,
+        title: 'Lot',
+        description: 'desc',
+        startPrice: 10,
+        buyNowPrice: 100,
+        startTime: new Date(Date.now() - 3600000),
+        endTime: new Date(Date.now() + 3600000),
+        ...overrides,
+      });
+
+    it('returns only active auctions that have not ended, soonest first, without auth', async () => {
+      const endingLater = await insertAuction({
+        title: 'Ending later',
+        endTime: new Date(Date.now() + 7200000),
+      });
+      const endingSooner = await insertAuction({
+        title: 'Ending sooner',
+        endTime: new Date(Date.now() + 1800000),
+      });
+      await insertAuction({ title: 'Closed', isActive: false });
+      // end time passed while the server was down, so the flag was never flipped
+      await insertAuction({ title: 'Expired but unswept', endTime: new Date(Date.now() - 60000) });
+
+      const res = await request(app).get('/api/v1/auctions/live');
+
+      expect(res.status).toBe(200);
+      expect(res.body.map((auction) => auction.id)).toEqual([endingSooner.id, endingLater.id]);
+      expect(res.body[0]).toHaveProperty('title', 'Ending sooner');
+    });
+
+    it('returns an empty array when no auction is live', async () => {
+      await insertAuction({ title: 'Closed', isActive: false });
+      await insertAuction({ title: 'Expired but unswept', endTime: new Date(Date.now() - 60000) });
+
+      const res = await request(app).get('/api/v1/auctions/live');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([]);
+    });
+  });
+
+  // -----------------------------------------------------------
   describe('GET /api/v1/auctions/:id', () => {
     it('returns 401 when not authenticated', async () => {
       const res = await request(app).get('/api/v1/auctions/1');
@@ -193,14 +245,43 @@ describe('Auction routes', () => {
 
   // -----------------------------------------------------------
   describe('POST /api/v1/auctions/upload', () => {
-    it('uploads files to S3 and returns results', async () => {
+    const buildImageForm = () => {
       const form = new FormData();
       form.append('imageFiles', Buffer.from('fake file content'), {
         filename: 'test.jpg',
         contentType: 'image/jpeg',
       });
+      return form;
+    };
+
+    it('returns 401 when not authenticated', async () => {
+      const form = buildImageForm();
 
       const res = await request(app)
+        .post('/api/v1/auctions/upload')
+        .set(form.getHeaders())
+        .send(form.getBuffer());
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 403 for a signed-in user who is not an admin', async () => {
+      const [agent] = await registerAndLogin({ email: 'buyer@example.com' });
+      const form = buildImageForm();
+
+      const res = await agent
+        .post('/api/v1/auctions/upload')
+        .set(form.getHeaders())
+        .send(form.getBuffer());
+
+      expect(res.status).toBe(403);
+    });
+
+    it('uploads files to S3 and returns results', async () => {
+      const [agent] = await registerAndLogin();
+      const form = buildImageForm();
+
+      const res = await agent
         .post('/api/v1/auctions/upload')
         .set(form.getHeaders())
         .send(form.getBuffer());
@@ -215,13 +296,14 @@ describe('Auction routes', () => {
       const mockInstance = new S3Client(); // this is your mocked instance from jest.mock
       mockInstance.send.mockRejectedValueOnce(new Error('Upload failed'));
 
+      const [agent] = await registerAndLogin();
       const form = new FormData();
       form.append('imageFiles', Buffer.from('bad content'), {
         filename: 'bad.jpg',
         contentType: 'image/jpeg',
       });
 
-      const res = await request(app)
+      const res = await agent
         .post('/api/v1/auctions/upload')
         .set(form.getHeaders())
         .send(form.getBuffer());
