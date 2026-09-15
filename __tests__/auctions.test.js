@@ -245,14 +245,43 @@ describe('Auction routes', () => {
 
   // -----------------------------------------------------------
   describe('POST /api/v1/auctions/upload', () => {
-    it('uploads files to S3 and returns results', async () => {
+    const buildImageForm = () => {
       const form = new FormData();
       form.append('imageFiles', Buffer.from('fake file content'), {
         filename: 'test.jpg',
         contentType: 'image/jpeg',
       });
+      return form;
+    };
+
+    it('returns 401 when not authenticated', async () => {
+      const form = buildImageForm();
 
       const res = await request(app)
+        .post('/api/v1/auctions/upload')
+        .set(form.getHeaders())
+        .send(form.getBuffer());
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 403 for a signed-in user who is not an admin', async () => {
+      const [agent] = await registerAndLogin({ email: 'buyer@example.com' });
+      const form = buildImageForm();
+
+      const res = await agent
+        .post('/api/v1/auctions/upload')
+        .set(form.getHeaders())
+        .send(form.getBuffer());
+
+      expect(res.status).toBe(403);
+    });
+
+    it('uploads files to S3 and returns results', async () => {
+      const [agent] = await registerAndLogin();
+      const form = buildImageForm();
+
+      const res = await agent
         .post('/api/v1/auctions/upload')
         .set(form.getHeaders())
         .send(form.getBuffer());
@@ -267,13 +296,14 @@ describe('Auction routes', () => {
       const mockInstance = new S3Client(); // this is your mocked instance from jest.mock
       mockInstance.send.mockRejectedValueOnce(new Error('Upload failed'));
 
+      const [agent] = await registerAndLogin();
       const form = new FormData();
       form.append('imageFiles', Buffer.from('bad content'), {
         filename: 'bad.jpg',
         contentType: 'image/jpeg',
       });
 
-      const res = await request(app)
+      const res = await agent
         .post('/api/v1/auctions/upload')
         .set(form.getHeaders())
         .send(form.getBuffer());
