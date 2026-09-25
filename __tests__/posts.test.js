@@ -645,7 +645,9 @@ describe('admin gallery routes', () => {
     );
 
     // Swap auction to gallery post
-    const swapRes = await agent.put(`/api/v1/admin/swap/${auction.id}`).send({ type: 'auction' });
+    const swapRes = await agent
+      .put(`/api/v1/admin/swap/${auction.id}`)
+      .send({ type: 'auction', category: 'Rigs' });
 
     expect(swapRes.status).toBe(200);
     expect(swapRes.body.message).toBe('Auction swapped to gallery post');
@@ -662,6 +664,7 @@ describe('admin gallery routes', () => {
     expect(galleryPost).toBeTruthy();
     expect(galleryPost.title).toBe('Swap Auction');
     expect(galleryPost.price).toBe('200');
+    expect(galleryPost.category).toBe('Rigs');
     // Confirm images transferred to gallery_imgs
     const imgs = await Post.getAdditionalImages(galleryPost.id);
     expect(imgs.length).toBe(3);
@@ -671,6 +674,31 @@ describe('admin gallery routes', () => {
       'http://www.big-cloud.com/img3.jpg',
     ]);
     expect(imgs.map((i) => i.public_id)).toEqual(['img1.jpg', 'img2.jpg', 'img3.jpg']);
+  });
+
+  it('PUT /api/v1/admin/swap/:id rejects a swap with no category and keeps the auction', async () => {
+    const [agent, user] = await registerAndLogin();
+    const Auction = require('../lib/models/Auction');
+    const auction = await Auction.insert({
+      title: 'No Category Auction',
+      description: 'Auction without a category',
+      imageUrls: ['http://www.big-cloud.com/img1.jpg'],
+      startPrice: 100,
+      buyNowPrice: 200,
+      currentBid: 100,
+      startTime: new Date(),
+      endTime: new Date(Date.now() + 3600000),
+      isActive: true,
+      creatorId: user.id,
+    });
+
+    const swapRes = await agent.put(`/api/v1/admin/swap/${auction.id}`).send({ type: 'auction' });
+
+    expect(swapRes.status).toBe(400);
+    expect(swapRes.body.message).toBe('Category is required');
+    const remainingAuction = await Auction.getById(auction.id);
+    expect(remainingAuction).not.toBeNull();
+    expect(remainingAuction.title).toBe('No Category Auction');
   });
   it('PUT /api/v1/admin/:id/tracking should update tracking number and send email (success)', async () => {
     const [agent, user] = await registerAndLogin();
