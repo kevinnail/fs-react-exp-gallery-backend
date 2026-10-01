@@ -42,25 +42,27 @@ describe('adminEmailService integration', () => {
     pool.end();
   });
 
-  it('emails only opted-in customers and returns send counts', async () => {
+  it('sends an announcement to every customer, including opted-out ones', async () => {
     await createUserWithProfile({ email: 'optin@example.com', sendEmailNotifications: true });
     await createUserWithProfile({ email: 'optout@example.com', sendEmailNotifications: false });
 
     const result = await sendMassEmailToCustomers({
-      subject: 'Sorry!',
-      message: 'Please ignore the previous email.',
+      subject: 'Site update',
+      message: 'Your order history is now on your account page.',
     });
 
-    expect(sendMassEmail).toHaveBeenCalledTimes(1);
+    expect(sendMassEmail).toHaveBeenCalledTimes(2);
     expect(sendMassEmail).toHaveBeenCalledWith({
       to: 'optin@example.com',
-      subject: 'Sorry!',
-      message: 'Please ignore the previous email.',
+      subject: 'Site update',
+      message: 'Your order history is now on your account page.',
     });
-    expect(sendMassEmail).not.toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'optout@example.com' }),
-    );
-    expect(result).toEqual({ total: 1, sent: 1, failed: 0 });
+    expect(sendMassEmail).toHaveBeenCalledWith({
+      to: 'optout@example.com',
+      subject: 'Site update',
+      message: 'Your order history is now on your account page.',
+    });
+    expect(result).toEqual({ total: 2, sent: 2, failed: 0 });
   });
 
   it('counts a failed send and still emails the remaining recipients', async () => {
