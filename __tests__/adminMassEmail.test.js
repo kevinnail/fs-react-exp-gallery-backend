@@ -23,6 +23,14 @@ const registerAndLogin = async (userOverrides = {}) => {
   return [agent, user];
 };
 
+const createCustomer = async (email, sendEmailNotifications = true) => {
+  const { user } = await UserService.create({ email, password: 'Test1234!' });
+  await Profile.insert({ userId: user.id, sendEmailNotifications });
+  return user;
+};
+
+const recipientsOf = () => sendMassEmail.mock.calls.map(([email]) => email.to).sort();
+
 describe('POST /api/v1/admin/mass-email', () => {
   beforeEach(async () => {
     await setup(pool);
@@ -33,8 +41,9 @@ describe('POST /api/v1/admin/mass-email', () => {
     pool.end();
   });
 
-  it('sends to opted-in customers and returns counts for an admin', async () => {
+  it('sends an announcement to every customer, opted out or not, and returns counts', async () => {
     const [adminAgent] = await registerAndLogin();
+    await createCustomer('optout@example.com', false);
     const { user: recipient } = await UserService.create({
       email: 'optin@example.com',
       password: 'Test1234!',
@@ -52,9 +61,11 @@ describe('POST /api/v1/admin/mass-email', () => {
       .send({ subject: 'Sorry!', message: 'Please disregard the earlier email.' });
 
     expect(resp.status).toBe(200);
-    expect(resp.body).toEqual({ total: 1, sent: 1, failed: 0 });
+    // Every account, the admin's own included, so the admin gets a copy.
+    expect(resp.body).toEqual({ total: 3, sent: 3, failed: 0 });
+    expect(recipientsOf()).toEqual(['optin@example.com', 'optout@example.com', 'test@example.com']);
     expect(sendMassEmail).toHaveBeenCalledWith({
-      to: 'optin@example.com',
+      to: 'optout@example.com',
       subject: 'Sorry!',
       message: 'Please disregard the earlier email.',
     });
@@ -90,6 +101,58 @@ describe('POST /api/v1/admin/mass-email', () => {
       .post('/api/v1/admin/mass-email')
       .send({ subject: 'Hi', message: 'Body' });
     expect(resp.status).toBe(401);
+    expect(sendMassEmail).not.toHaveBeenCalled();
+  });
+  it('sends a targeted email to exactly the listed customers', async () => {
+    const [adminAgent] = await registerAndLogin();
+    const first = await createCustomer('first@example.com');
+    const second = await createCustomer('second@example.com');
+    await createCustomer('left-out@example.com');
+
+    const resp = await adminAgent
+      .post('/api/v1/admin/mass-email')
+      .send({ subject: 'Hi', message: 'Body', userIds: [Number(first.id), Number(second.id)] });
+
+    expect(resp.status).toBe(200);
+    expect(resp.body).toEqual({ total: 2, sent: 2, failed: 0 });
+    expect(recipientsOf()).toEqual(['first@example.com', 'second@example.com']);
+  });
+
+  it('does not email a listed customer who opted out', async () => {
+    const [adminAgent] = await registerAndLogin();
+    const optedIn = await createCustomer('optin@example.com');
+    const optedOut = await createCustomer('optout@example.com', false);
+
+    const resp = await adminAgent
+      .post('/api/v1/admin/mass-email')
+      .send({ subject: 'Hi', message: 'Body', userIds: [Number(optedIn.id), Number(optedOut.id)] });
+
+    expect(resp.status).toBe(200);
+    expect(resp.body).toEqual({ total: 1, sent: 1, failed: 0 });
+    expect(recipientsOf()).toEqual(['optin@example.com']);
+  });
+
+  it('returns 400 when userIds is not an array', async () => {
+    const [adminAgent] = await registerAndLogin();
+    await createCustomer('optin@example.com');
+
+    const resp = await adminAgent
+      .post('/api/v1/admin/mass-email')
+      .send({ subject: 'Hi', message: 'Body', userIds: '5' });
+
+    expect(resp.status).toBe(400);
+    expect(sendMassEmail).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for an empty userIds list instead of emailing everyone', async () => {
+    const [adminAgent] = await registerAndLogin();
+    await createCustomer('optin@example.com');
+
+    const resp = await adminAgent
+      .post('/api/v1/admin/mass-email')
+      .send({ subject: 'Hi', message: 'Body', userIds: [] });
+
+    expect(resp.status).toBe(400);
     expect(sendMassEmail).not.toHaveBeenCalled();
   });
 });
