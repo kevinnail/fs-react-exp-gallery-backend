@@ -35,3 +35,4 @@ jobs:
           EMAIL_VERIFY_SECRET: ${{secrets.EMAIL_VERIFY_SECRET}}
           MAIL_FROM: ci-noreply@example.com
           PASSWORD_RESET_SECRET: ${{secrets.PASSWORD_RESET_SECRET}}
+          UNSUBSCRIBE_SECRET: ci-unsubscribe-secret
