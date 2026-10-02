@@ -11,14 +11,8 @@ jest.mock('../lib/utils/mailer.js', () => ({
 }));
 const { sendNewPostEmail } = require('../lib/utils/mailer.js');
 
-function makeProfileData({
-  userId,
-  firstName,
-  lastName,
-  imageUrl = null,
-  sendEmailNotifications = true,
-}) {
-  return { userId, firstName, lastName, imageUrl, sendEmailNotifications };
+function makeProfileData({ userId, firstName, lastName, imageUrl = null, ...emailPreferences }) {
+  return { userId, firstName, lastName, imageUrl, ...emailPreferences };
 }
 
 const mockUser = {
@@ -60,7 +54,6 @@ describe('postEmailService integration', () => {
         userId: user.id,
         firstName: 'Post',
         lastName: 'One',
-        sendEmailNotifications: true,
       }),
     );
 
@@ -78,7 +71,6 @@ describe('postEmailService integration', () => {
         userId: user.id,
         firstName: 'Post',
         lastName: 'Two',
-        sendEmailNotifications: true,
       }),
     );
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -102,7 +94,6 @@ describe('postEmailService integration', () => {
         userId: user.id,
         firstName: 'Post',
         lastName: 'Three',
-        sendEmailNotifications: true,
       }),
     );
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
@@ -123,14 +114,14 @@ describe('postEmailService integration', () => {
     expect(lastPostEmailAt).toBeLessThanOrEqual(after + 5000);
   });
 
-  it('does not send email to users with notifications disabled', async () => {
+  it('does not send email to users who turned off gallery post emails', async () => {
     const [, user] = await registerAndLogin({ email: 'post4@example.com' });
     await Profile.insert(
       makeProfileData({
         userId: user.id,
         firstName: 'No',
         lastName: 'Notify',
-        sendEmailNotifications: false,
+        emailGalleryPosts: false,
       }),
     );
 
@@ -140,6 +131,25 @@ describe('postEmailService integration', () => {
     expect(sendNewPostEmail).not.toHaveBeenCalled();
   });
 
+  it('sends to a user who only kept gallery post emails on', async () => {
+    const [, user] = await registerAndLogin({ email: 'post10@example.com' });
+    await Profile.insert(
+      makeProfileData({
+        userId: user.id,
+        firstName: 'Posts',
+        lastName: 'Only',
+        emailAuctions: false,
+        emailPromotions: false,
+        emailMessages: false,
+      }),
+    );
+
+    const post = { id: 10, title: 'Test Post 10' };
+    await notifyUsersNewPost({ post });
+
+    expect(sendNewPostEmail).toHaveBeenCalledWith({ to: 'post10@example.com', post });
+  });
+
   it('handles errors gracefully and does not record a timestamp for a failed send', async () => {
     const [, user] = await registerAndLogin({ email: 'post5@example.com' });
     await Profile.insert(
@@ -147,7 +157,6 @@ describe('postEmailService integration', () => {
         userId: user.id,
         firstName: 'Error',
         lastName: 'Case',
-        sendEmailNotifications: true,
       }),
     );
     sendNewPostEmail.mockRejectedValueOnce(new Error('fail'));
@@ -167,7 +176,6 @@ describe('postEmailService integration', () => {
         userId: user.id,
         firstName: 'Batch',
         lastName: 'Upload',
-        sendEmailNotifications: true,
       }),
     );
 
