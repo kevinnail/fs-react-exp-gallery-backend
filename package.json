@@ -11,6 +11,7 @@
     "start:watch": "nodemon -r dotenv/config server.js",
     "setup-db": "node -r dotenv/config setup-db.js",
     "setup-test-db": "node -r dotenv/config setup-test-db.js",
+    "check:emails": "node -r dotenv/config scripts/check-email-preferences.js",
     "setup-heroku": "heroku run npm run setup-db",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
