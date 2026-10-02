@@ -141,7 +141,10 @@ describe('Profile with Address Integration', () => {
     const res = await agent.put('/api/v1/profile').send({
       firstName: 'Jane',
       lastName: 'Doe',
-      sendEmailNotifications: true,
+      emailAuctions: true,
+      emailGalleryPosts: true,
+      emailPromotions: true,
+      emailMessages: true,
     });
 
     expect(res.status).toBe(200);
@@ -169,7 +172,10 @@ describe('Profile with Address Integration', () => {
     const res = await agent.put('/api/v1/profile').send({
       firstName: 'Jane',
       lastName: 'Doe',
-      sendEmailNotifications: true,
+      emailAuctions: true,
+      emailGalleryPosts: true,
+      emailPromotions: true,
+      emailMessages: true,
       ...mockAddress,
     });
 
@@ -190,7 +196,10 @@ describe('Profile with Address Integration', () => {
     // Create initial profile with address
     await agent.put('/api/v1/profile').send({
       firstName: 'Jane',
-      sendEmailNotifications: true,
+      emailAuctions: true,
+      emailGalleryPosts: true,
+      emailPromotions: true,
+      emailMessages: true,
       ...mockAddress,
     });
 
@@ -202,7 +211,10 @@ describe('Profile with Address Integration', () => {
       state: 'OR',
       postalCode: '97401',
       countryCode: 'US',
-      sendEmailNotifications: true,
+      emailAuctions: true,
+      emailGalleryPosts: true,
+      emailPromotions: true,
+      emailMessages: true,
     });
 
     expect(res.status).toBe(200);
