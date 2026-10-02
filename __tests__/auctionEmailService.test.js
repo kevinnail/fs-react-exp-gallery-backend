@@ -53,7 +53,11 @@ describe('auctionEmailService integration', () => {
     const auction = { id: 1, title: 'Test Auction' };
     await notifyUsersNewAuction({ auction });
 
-    expect(sendNewAuctionEmail).toHaveBeenCalledWith({ to: 'notify1@example.com', auction });
+    expect(sendNewAuctionEmail).toHaveBeenCalledWith({
+      to: 'notify1@example.com',
+      auction,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
     const updated = await Profile.getByUserId(user.id);
     expect(updated).toBeTruthy();
     // Check last_auction_email_at updated
@@ -82,7 +86,11 @@ describe('auctionEmailService integration', () => {
 
     const auction = { id: 2, title: 'Test Auction 2' };
     await notifyUsersNewAuction({ auction });
-    expect(sendNewAuctionEmail).not.toHaveBeenCalledWith({ to: 'notify2@example.com', auction });
+    expect(sendNewAuctionEmail).not.toHaveBeenCalledWith({
+      to: 'notify2@example.com',
+      auction,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
   });
 
   it('sends email if cooldown passed', async () => {
@@ -105,7 +113,11 @@ describe('auctionEmailService integration', () => {
     const before = Date.now();
     await notifyUsersNewAuction({ auction });
     const after = Date.now();
-    expect(sendNewAuctionEmail).toHaveBeenCalledWith({ to: 'notify3@example.com', auction });
+    expect(sendNewAuctionEmail).toHaveBeenCalledWith({
+      to: 'notify3@example.com',
+      auction,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
     const { rows } = await pool.query(
       'SELECT last_auction_email_at FROM profiles WHERE user_id = $1',
       [user.id],
@@ -131,7 +143,11 @@ describe('auctionEmailService integration', () => {
 
     const auction = { id: 4, title: 'Test Auction 4' };
     await notifyUsersNewAuction({ auction });
-    expect(sendNewAuctionEmail).not.toHaveBeenCalledWith({ to: 'notify4@example.com', auction });
+    expect(sendNewAuctionEmail).not.toHaveBeenCalledWith({
+      to: 'notify4@example.com',
+      auction,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
   });
 
   it('sends to a user who only kept auction emails on', async () => {
@@ -149,7 +165,11 @@ describe('auctionEmailService integration', () => {
 
     const auction = { id: 6, title: 'Test Auction 6' };
     await notifyUsersNewAuction({ auction });
-    expect(sendNewAuctionEmail).toHaveBeenCalledWith({ to: 'notify6@example.com', auction });
+    expect(sendNewAuctionEmail).toHaveBeenCalledWith({
+      to: 'notify6@example.com',
+      auction,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
   });
 
   it('handles errors gracefully and continues', async () => {

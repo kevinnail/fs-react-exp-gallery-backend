@@ -8,6 +8,8 @@ process.env.NODE_ENV = 'test';
 process.env.ADMIN_ID = 'none';
 process.env.MAIL_FROM = process.env.MAIL_FROM || 'preference-check@example.com';
 process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+process.env.UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET || 'preference-check-secret';
+process.env.MAIL_POSTAL_ADDRESS = process.env.MAIL_POSTAL_ADDRESS || 'Preference check address';
 
 // Must be replaced before the mailer module loads, since it builds its transport at require time
 const nodemailer = require('nodemailer');
