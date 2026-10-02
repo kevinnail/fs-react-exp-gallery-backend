@@ -62,6 +62,9 @@ describe('adminEmailService integration', () => {
       message: 'Your order history is now on your account page.',
     });
     expect(result).toEqual({ total: 2, sent: 2, failed: 0 });
+    for (const [email] of sendMassEmail.mock.calls) {
+      expect(email.unsubscribeUrl).toBeUndefined();
+    }
   });
 
   it('sends a promotion only to targeted customers with promotion emails on', async () => {
@@ -86,6 +89,7 @@ describe('adminEmailService integration', () => {
       to: 'promotions-on@example.com',
       subject: 'Sale',
       message: 'Everything is 20% off this weekend.',
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
     });
     expect(result).toEqual({ total: 1, sent: 1, failed: 0 });
   });
