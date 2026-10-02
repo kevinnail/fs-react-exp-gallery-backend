@@ -60,7 +60,11 @@ describe('postEmailService integration', () => {
     const post = { id: 1, title: 'Test Post' };
     await notifyUsersNewPost({ post });
 
-    expect(sendNewPostEmail).toHaveBeenCalledWith({ to: 'post1@example.com', post });
+    expect(sendNewPostEmail).toHaveBeenCalledWith({
+      to: 'post1@example.com',
+      post,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
     expect(await getLastPostEmailAt(user.id)).not.toBeNull();
   });
 
@@ -107,7 +111,11 @@ describe('postEmailService integration', () => {
     await notifyUsersNewPost({ post });
     const after = Date.now();
 
-    expect(sendNewPostEmail).toHaveBeenCalledWith({ to: 'post3@example.com', post });
+    expect(sendNewPostEmail).toHaveBeenCalledWith({
+      to: 'post3@example.com',
+      post,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
     const lastPostEmailAt = new Date(await getLastPostEmailAt(user.id)).getTime();
     // Allow a 5 second window for timing issues
     expect(lastPostEmailAt).toBeGreaterThanOrEqual(before - 5000);
@@ -147,7 +155,11 @@ describe('postEmailService integration', () => {
     const post = { id: 10, title: 'Test Post 10' };
     await notifyUsersNewPost({ post });
 
-    expect(sendNewPostEmail).toHaveBeenCalledWith({ to: 'post10@example.com', post });
+    expect(sendNewPostEmail).toHaveBeenCalledWith({
+      to: 'post10@example.com',
+      post,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
   });
 
   it('handles errors gracefully and does not record a timestamp for a failed send', async () => {
@@ -187,6 +199,7 @@ describe('postEmailService integration', () => {
     expect(sendNewPostEmail).toHaveBeenCalledWith({
       to: 'post6@example.com',
       post: { id: 1, title: 'Piece 1' },
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
     });
   });
 
@@ -208,6 +221,10 @@ describe('postEmailService integration', () => {
     await notifyUsersNewPost({ post });
 
     expect(sendNewPostEmail).toHaveBeenCalledTimes(1);
-    expect(sendNewPostEmail).toHaveBeenCalledWith({ to: 'post8@example.com', post });
+    expect(sendNewPostEmail).toHaveBeenCalledWith({
+      to: 'post8@example.com',
+      post,
+      unsubscribeUrl: expect.stringContaining('/unsubscribe?token='),
+    });
   });
 });
