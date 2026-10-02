@@ -23,9 +23,9 @@ const registerAndLogin = async (userOverrides = {}) => {
   return [agent, user];
 };
 
-const createCustomer = async (email, sendEmailNotifications = true) => {
+const createCustomer = async (email, emailPreferences = {}) => {
   const { user } = await UserService.create({ email, password: 'Test1234!' });
-  await Profile.insert({ userId: user.id, sendEmailNotifications });
+  await Profile.insert({ userId: user.id, ...emailPreferences });
   return user;
 };
 
@@ -43,7 +43,11 @@ describe('POST /api/v1/admin/mass-email', () => {
 
   it('sends an announcement to every customer, opted out or not, and returns counts', async () => {
     const [adminAgent] = await registerAndLogin();
-    await createCustomer('optout@example.com', false);
+    await createCustomer('optout@example.com', {
+      emailAuctions: false,
+      emailGalleryPosts: false,
+      emailPromotions: false,
+    });
     const { user: recipient } = await UserService.create({
       email: 'optin@example.com',
       password: 'Test1234!',
@@ -53,7 +57,6 @@ describe('POST /api/v1/admin/mass-email', () => {
       firstName: 'Opt',
       lastName: 'In',
       imageUrl: null,
-      sendEmailNotifications: true,
     });
 
     const resp = await adminAgent
@@ -118,10 +121,13 @@ describe('POST /api/v1/admin/mass-email', () => {
     expect(recipientsOf()).toEqual(['first@example.com', 'second@example.com']);
   });
 
-  it('does not email a listed customer who opted out', async () => {
+  it('does not email a listed customer who turned off promotion emails', async () => {
     const [adminAgent] = await registerAndLogin();
-    const optedIn = await createCustomer('optin@example.com');
-    const optedOut = await createCustomer('optout@example.com', false);
+    const optedIn = await createCustomer('optin@example.com', {
+      emailAuctions: false,
+      emailGalleryPosts: false,
+    });
+    const optedOut = await createCustomer('optout@example.com', { emailPromotions: false });
 
     const resp = await adminAgent
       .post('/api/v1/admin/mass-email')

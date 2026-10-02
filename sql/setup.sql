@@ -65,7 +65,10 @@ CREATE TABLE profiles (
   FOREIGN KEY (user_id) REFERENCES users_admin(id) ON DELETE CASCADE,
   UNIQUE(user_id),
   show_welcome BOOLEAN NOT NULL DEFAULT TRUE,
-  send_email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  email_auctions BOOLEAN NOT NULL DEFAULT TRUE,
+  email_gallery_posts BOOLEAN NOT NULL DEFAULT TRUE,
+  email_promotions BOOLEAN NOT NULL DEFAULT TRUE,
+  email_messages BOOLEAN NOT NULL DEFAULT TRUE,
   last_auction_email_at TIMESTAMP NULL,
   last_message_email_at TIMESTAMP NULL,
   last_post_email_at TIMESTAMP NULL

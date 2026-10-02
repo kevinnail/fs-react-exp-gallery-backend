@@ -72,7 +72,10 @@ describe('Profile routes', () => {
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
         showWelcome: true,
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastAuctionEmailedAt: null,
         lastMessageEmailAt: null,
       });
@@ -89,7 +92,10 @@ describe('Profile routes', () => {
           createdAt: expect.any(String),
           updatedAt: expect.any(String),
           showWelcome: expect.any(Boolean),
-          sendEmailNotifications: expect.any(Boolean),
+          emailAuctions: expect.any(Boolean),
+          emailGalleryPosts: expect.any(Boolean),
+          emailPromotions: expect.any(Boolean),
+          emailMessages: expect.any(Boolean),
           lastMessageEmailAt: null,
         },
         address: null,
@@ -113,7 +119,10 @@ describe('Profile routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
       });
@@ -130,7 +139,10 @@ describe('Profile routes', () => {
           createdAt: expect.any(String),
           updatedAt: expect.any(String),
           showWelcome: expect.any(Boolean),
-          sendEmailNotifications: expect.any(Boolean),
+          emailAuctions: expect.any(Boolean),
+          emailGalleryPosts: expect.any(Boolean),
+          emailPromotions: expect.any(Boolean),
+          emailMessages: expect.any(Boolean),
           lastMessageEmailAt: null,
         },
         address: null,
@@ -147,7 +159,10 @@ describe('Profile routes', () => {
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
         updatedAt: expect.any(String),
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       const res = await agent.put('/api/v1/profile').send({
@@ -155,7 +170,10 @@ describe('Profile routes', () => {
         lastName: 'Smith',
         imageUrl: 'https://example.com/new-image.jpg',
         updatedAt: expect.any(String),
-        sendEmailNotifications: false,
+        emailAuctions: false,
+        emailGalleryPosts: true,
+        emailPromotions: false,
+        emailMessages: true,
       });
 
       expect(res.status).toBe(200);
@@ -169,7 +187,10 @@ describe('Profile routes', () => {
           createdAt: expect.any(String),
           updatedAt: expect.any(String),
           showWelcome: true,
-          sendEmailNotifications: false,
+          emailAuctions: false,
+          emailGalleryPosts: true,
+          emailPromotions: false,
+          emailMessages: true,
           lastMessageEmailAt: null,
         },
         address: null,
@@ -223,7 +244,10 @@ describe('Profile routes', () => {
         image_url: 'https://example.com/new-image.jpg',
         firstName: 'John',
         lastName: 'Doe',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       expect(res.status).toBe(200);
@@ -236,7 +260,10 @@ describe('Profile routes', () => {
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastMessageEmailAt: null,
       });
     });
@@ -250,13 +277,19 @@ describe('Profile routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       const res = await agent.post('/api/v1/profile/images').send({
         image_url: 'https://example.com/new-image.jpg',
         firstName: 'Jane',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastName: 'Smith',
       });
 
@@ -270,7 +303,10 @@ describe('Profile routes', () => {
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
         showWelcome: expect.any(Boolean),
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastMessageEmailAt: null,
       });
     });
@@ -324,7 +360,10 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       expect(profile).toEqual({
@@ -336,7 +375,10 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastMessageEmailAt: null,
       });
     });
@@ -356,7 +398,10 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       const profile = await Profile.getByUserId(user.id);
@@ -372,14 +417,20 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       const updatedProfile = await Profile.updateByUserId(user.id, {
         firstName: 'Jane',
         lastName: 'Smith',
         imageUrl: 'https://example.com/new-image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       expect(updatedProfile).toEqual({
@@ -391,7 +442,10 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastMessageEmailAt: null,
       });
     });
@@ -417,7 +471,10 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       expect(profile).toEqual({
@@ -429,7 +486,10 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
-        sendEmailNotifications: expect.any(Boolean),
+        emailAuctions: expect.any(Boolean),
+        emailGalleryPosts: expect.any(Boolean),
+        emailPromotions: expect.any(Boolean),
+        emailMessages: expect.any(Boolean),
         lastMessageEmailAt: null,
       });
     });
@@ -441,14 +501,20 @@ describe('Profile model', () => {
         firstName: 'John',
         lastName: 'Doe',
         imageUrl: 'https://example.com/old-image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       const updatedProfile = await Profile.upsertByUserId(user.id, {
         firstName: 'Jane',
         lastName: 'Smith',
         imageUrl: 'https://example.com/new-image.jpg',
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
       });
 
       expect(updatedProfile).toEqual({
@@ -460,7 +526,10 @@ describe('Profile model', () => {
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
         showWelcome: expect.any(Boolean),
-        sendEmailNotifications: true,
+        emailAuctions: true,
+        emailGalleryPosts: true,
+        emailPromotions: true,
+        emailMessages: true,
         lastMessageEmailAt: null,
       });
     });

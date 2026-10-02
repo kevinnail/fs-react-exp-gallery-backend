@@ -38,7 +38,6 @@ describe('message email notifications', () => {
       firstName: null,
       lastName: null,
       imageUrl: null,
-      sendEmailNotifications: true,
     });
 
     const message = { messageContent: 'Hello from admin' };
@@ -52,22 +51,10 @@ describe('message email notifications', () => {
     expect(updatedProfile.lastMessageEmailAt).toBeTruthy();
   });
 
-  it('does not send email when user is opted-out', async () => {
+  it('does not send email when user turned off message emails', async () => {
     const { user } = await UserService.create(mockUserCreds);
-    // Ensure profile exists
-    await Profile.upsertByUserId(user.id, {
-      firstName: null,
-      lastName: null,
-      imageUrl: null,
-      sendEmailNotifications: true,
-    });
-    // Opt-out
-    await Profile.updateByUserId(user.id, {
-      firstName: null,
-      lastName: null,
-      imageUrl: null,
-      sendEmailNotifications: false,
-    });
+    // Every other category stays on, so only the message setting can block this
+    await Profile.insert({ userId: user.id, emailMessages: false });
 
     const recipient = await User.getEmailById(user.id);
     const message = { messageContent: 'Hello from admin' };
@@ -86,7 +73,6 @@ describe('message email notifications', () => {
       firstName: null,
       lastName: null,
       imageUrl: null,
-      sendEmailNotifications: true,
     });
 
     // Set last_message_email_at to recent (within 20 minutes)
@@ -117,7 +103,6 @@ describe('message email notifications', () => {
       firstName: null,
       lastName: null,
       imageUrl: null,
-      sendEmailNotifications: true,
     });
 
     // If admin followed normal user logic, this would throttle
