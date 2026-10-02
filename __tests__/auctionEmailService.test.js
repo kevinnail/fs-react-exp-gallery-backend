@@ -11,14 +11,8 @@ jest.mock('../lib/utils/mailer.js', () => ({
 }));
 const { sendNewAuctionEmail } = require('../lib/utils/mailer.js');
 
-function makeProfileData({
-  userId,
-  firstName,
-  lastName,
-  imageUrl = null,
-  sendEmailNotifications = true,
-}) {
-  return { userId, firstName, lastName, imageUrl, sendEmailNotifications };
+function makeProfileData({ userId, firstName, lastName, imageUrl = null, ...emailPreferences }) {
+  return { userId, firstName, lastName, imageUrl, ...emailPreferences };
 }
 
 const mockUser = {
@@ -53,7 +47,6 @@ describe('auctionEmailService integration', () => {
         userId: user.id,
         firstName: 'Notify',
         lastName: 'One',
-        sendEmailNotifications: true,
       }),
     );
 
@@ -78,7 +71,6 @@ describe('auctionEmailService integration', () => {
         userId: user.id,
         firstName: 'Notify',
         lastName: 'Two',
-        sendEmailNotifications: true,
       }),
     );
     // Set last_auction_email_at to 1 hour ago
@@ -100,7 +92,6 @@ describe('auctionEmailService integration', () => {
         userId: user.id,
         firstName: 'Notify',
         lastName: 'Three',
-        sendEmailNotifications: true,
       }),
     );
     // Set last_auction_email_at to 3 hours ago
@@ -126,7 +117,7 @@ describe('auctionEmailService integration', () => {
     expect(lastAuctionEmailAt).toBeLessThanOrEqual(after + 5000);
   });
 
-  it('does not send email to users with notifications disabled', async () => {
+  it('does not send email to users who turned off auction emails', async () => {
     const [, user] = await registerAndLogin({ email: 'notify4@example.com' });
 
     await Profile.insert(
@@ -134,13 +125,31 @@ describe('auctionEmailService integration', () => {
         userId: user.id,
         firstName: 'No',
         lastName: 'Notify',
-        sendEmailNotifications: false,
+        emailAuctions: false,
       }),
     );
 
     const auction = { id: 4, title: 'Test Auction 4' };
     await notifyUsersNewAuction({ auction });
     expect(sendNewAuctionEmail).not.toHaveBeenCalledWith({ to: 'notify4@example.com', auction });
+  });
+
+  it('sends to a user who only kept auction emails on', async () => {
+    const [, user] = await registerAndLogin({ email: 'notify6@example.com' });
+    await Profile.insert(
+      makeProfileData({
+        userId: user.id,
+        firstName: 'Auctions',
+        lastName: 'Only',
+        emailGalleryPosts: false,
+        emailPromotions: false,
+        emailMessages: false,
+      }),
+    );
+
+    const auction = { id: 6, title: 'Test Auction 6' };
+    await notifyUsersNewAuction({ auction });
+    expect(sendNewAuctionEmail).toHaveBeenCalledWith({ to: 'notify6@example.com', auction });
   });
 
   it('handles errors gracefully and continues', async () => {
@@ -150,7 +159,6 @@ describe('auctionEmailService integration', () => {
         userId: user.id,
         firstName: 'Error',
         lastName: 'Case',
-        sendEmailNotifications: true,
       }),
     );
     sendNewAuctionEmail.mockRejectedValueOnce(new Error('fail'));
