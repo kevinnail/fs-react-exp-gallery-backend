@@ -9,24 +9,18 @@ jest.mock('../lib/utils/mailer.js', () => ({
 }));
 const { sendMassEmail } = require('../lib/utils/mailer.js');
 
-function makeProfileData({
-  userId,
-  firstName,
-  lastName,
-  imageUrl = null,
-  sendEmailNotifications = true,
-}) {
-  return { userId, firstName, lastName, imageUrl, sendEmailNotifications };
+function makeProfileData({ userId, firstName, lastName, imageUrl = null, ...emailPreferences }) {
+  return { userId, firstName, lastName, imageUrl, ...emailPreferences };
 }
 
-const createUserWithProfile = async ({ email, sendEmailNotifications }) => {
+const createUserWithProfile = async ({ email, ...emailPreferences }) => {
   const { user } = await UserService.create({ email, password: 'Test1234!' });
   await Profile.insert(
     makeProfileData({
       userId: user.id,
       firstName: 'Test',
       lastName: 'User',
-      sendEmailNotifications,
+      ...emailPreferences,
     }),
   );
   return user;
@@ -43,8 +37,13 @@ describe('adminEmailService integration', () => {
   });
 
   it('sends an announcement to every customer, including opted-out ones', async () => {
-    await createUserWithProfile({ email: 'optin@example.com', sendEmailNotifications: true });
-    await createUserWithProfile({ email: 'optout@example.com', sendEmailNotifications: false });
+    await createUserWithProfile({ email: 'optin@example.com' });
+    await createUserWithProfile({
+      email: 'optout@example.com',
+      emailAuctions: false,
+      emailGalleryPosts: false,
+      emailPromotions: false,
+    });
 
     const result = await sendMassEmailToCustomers({
       subject: 'Site update',
@@ -65,9 +64,35 @@ describe('adminEmailService integration', () => {
     expect(result).toEqual({ total: 2, sent: 2, failed: 0 });
   });
 
+  it('sends a promotion only to targeted customers with promotion emails on', async () => {
+    const promotionsOn = await createUserWithProfile({
+      email: 'promotions-on@example.com',
+      emailAuctions: false,
+      emailGalleryPosts: false,
+    });
+    const promotionsOff = await createUserWithProfile({
+      email: 'promotions-off@example.com',
+      emailPromotions: false,
+    });
+
+    const result = await sendMassEmailToCustomers({
+      subject: 'Sale',
+      message: 'Everything is 20% off this weekend.',
+      userIds: [Number(promotionsOn.id), Number(promotionsOff.id)],
+    });
+
+    expect(sendMassEmail).toHaveBeenCalledTimes(1);
+    expect(sendMassEmail).toHaveBeenCalledWith({
+      to: 'promotions-on@example.com',
+      subject: 'Sale',
+      message: 'Everything is 20% off this weekend.',
+    });
+    expect(result).toEqual({ total: 1, sent: 1, failed: 0 });
+  });
+
   it('counts a failed send and still emails the remaining recipients', async () => {
-    await createUserWithProfile({ email: 'first@example.com', sendEmailNotifications: true });
-    await createUserWithProfile({ email: 'second@example.com', sendEmailNotifications: true });
+    await createUserWithProfile({ email: 'first@example.com' });
+    await createUserWithProfile({ email: 'second@example.com' });
 
     // first recipient's send blows up; the loop must continue to the second
     sendMassEmail.mockRejectedValueOnce(new Error('smtp fail'));
