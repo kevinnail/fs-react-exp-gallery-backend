@@ -7,6 +7,9 @@ const mailer = require('../lib/utils/mailer');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
+const UNSUBSCRIBE_URL = 'http://localhost:3001/unsubscribe?token=signed-token';
+const POSTAL_ADDRESS = 'PO Box 123, Eugene, OR 97401';
+
 describe('mailer', () => {
   // sendMailMock is now defined above and reused for all tests
   let readFileSyncMock;
@@ -31,6 +34,7 @@ describe('mailer', () => {
     process.env.BACKEND_URL = 'http://localhost:3000';
     process.env.FRONTEND_URL = 'http://localhost:3001';
     process.env.EMAIL_VERIFY_SECRET = 'secret';
+    process.env.MAIL_POSTAL_ADDRESS = POSTAL_ADDRESS;
   });
   afterEach(() => {
     jest.restoreAllMocks();
@@ -149,11 +153,15 @@ describe('mailer', () => {
   describe('sendNewAuctionEmail', () => {
     it('should send new auction email with correct template and subject', async () => {
       readFileSyncMock.mockReturnValue(
-        '<html>{{title}}{{description}}{{imageUrl}}{{auctionUrl}}{{homePageUrl}}{{instagramUrl}}</html>',
+        '<html>{{title}}{{description}}{{imageUrl}}{{auctionUrl}}{{homePageUrl}}{{instagramUrl}}{{footer}}</html>',
       );
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
       const auction = { id: 1, title: 'Test', description: 'Desc', imageUrls: ['img.jpg'] };
-      await mailer.sendNewAuctionEmail({ to: 'to@example.com', auction });
+      await mailer.sendNewAuctionEmail({
+        to: 'to@example.com',
+        auction,
+        unsubscribeUrl: UNSUBSCRIBE_URL,
+      });
       expect(readFileSyncMock).toHaveBeenCalledWith(
         expect.stringContaining('newAuctionEmail.html'),
         'utf8',
@@ -165,15 +173,43 @@ describe('mailer', () => {
           html: expect.stringContaining('Test'),
         }),
       );
+      const sentHtml = sendMailMock.mock.calls[0][0].html;
+      expect(sentHtml).toContain(`href="${UNSUBSCRIBE_URL}"`);
+      expect(sentHtml).toContain(POSTAL_ADDRESS);
       expect(logSpy).toHaveBeenCalledWith(
         expect.stringContaining('Auction notification email sent to: to@example.com'),
       );
       logSpy.mockRestore();
     });
+    it('should throw instead of sending when the unsubscribe link is missing', async () => {
+      readFileSyncMock.mockReturnValue('<html>{{footer}}</html>');
+      const auction = { id: 1, title: 'Test', description: 'Desc', imageUrls: ['img.jpg'] };
+      await expect(mailer.sendNewAuctionEmail({ to: 'to@example.com', auction })).rejects.toThrow(
+        'unsubscribeUrl is required',
+      );
+      expect(sendMailMock).not.toHaveBeenCalled();
+    });
+    it('should throw instead of sending when MAIL_POSTAL_ADDRESS is missing', async () => {
+      readFileSyncMock.mockReturnValue('<html>{{footer}}</html>');
+      delete process.env.MAIL_POSTAL_ADDRESS;
+      const auction = { id: 1, title: 'Test', description: 'Desc', imageUrls: ['img.jpg'] };
+      await expect(
+        mailer.sendNewAuctionEmail({
+          to: 'to@example.com',
+          auction,
+          unsubscribeUrl: UNSUBSCRIBE_URL,
+        }),
+      ).rejects.toThrow('MAIL_POSTAL_ADDRESS');
+      expect(sendMailMock).not.toHaveBeenCalled();
+    });
     it('should handle missing auction fields', async () => {
       readFileSyncMock.mockReturnValue('<html>{{title}}{{description}}{{imageUrl}}</html>');
       const auction = { id: 1, imageUrls: [] };
-      await mailer.sendNewAuctionEmail({ to: 'to@example.com', auction });
+      await mailer.sendNewAuctionEmail({
+        to: 'to@example.com',
+        auction,
+        unsubscribeUrl: UNSUBSCRIBE_URL,
+      });
       expect(sendMailMock).toHaveBeenCalledWith(
         expect.objectContaining({
           html: expect.any(String),
@@ -185,34 +221,52 @@ describe('mailer', () => {
         throw new Error('file not found');
       });
       const auction = { id: 1, title: 'Test', description: 'Desc', imageUrls: ['img.jpg'] };
-      await expect(mailer.sendNewAuctionEmail({ to: 'to@example.com', auction })).rejects.toThrow(
-        'file not found',
-      );
+      await expect(
+        mailer.sendNewAuctionEmail({
+          to: 'to@example.com',
+          auction,
+          unsubscribeUrl: UNSUBSCRIBE_URL,
+        }),
+      ).rejects.toThrow('file not found');
     });
     it('should throw if sendMail fails', async () => {
       readFileSyncMock.mockReturnValue('<html></html>');
       const auction = { id: 1, title: 'Test', description: 'Desc', imageUrls: ['img.jpg'] };
       sendMailMock.mockRejectedValueOnce(new Error('smtp fail'));
-      await expect(mailer.sendNewAuctionEmail({ to: 'to@example.com', auction })).rejects.toThrow(
-        'smtp fail',
-      );
+      await expect(
+        mailer.sendNewAuctionEmail({
+          to: 'to@example.com',
+          auction,
+          unsubscribeUrl: UNSUBSCRIBE_URL,
+        }),
+      ).rejects.toThrow('smtp fail');
     });
     it('should throw if MAIL_FROM is missing', async () => {
       readFileSyncMock.mockReturnValue('<html></html>');
       const auction = { id: 1, title: 'Test', description: 'Desc', imageUrls: ['img.jpg'] };
       delete process.env.MAIL_FROM;
-      await expect(mailer.sendNewAuctionEmail({ to: 'to@example.com', auction })).rejects.toThrow();
+      await expect(
+        mailer.sendNewAuctionEmail({
+          to: 'to@example.com',
+          auction,
+          unsubscribeUrl: UNSUBSCRIBE_URL,
+        }),
+      ).rejects.toThrow();
     });
   });
 
   describe('sendNewPostEmail', () => {
     it('should send new gallery post email with correct template, dynamic subject, and resolved post URL', async () => {
       readFileSyncMock.mockReturnValue(
-        '<html>{{title}}{{description}}{{imageUrl}}{{postUrl}}{{homePageUrl}}{{instagramUrl}}</html>',
+        '<html>{{title}}{{description}}{{imageUrl}}{{postUrl}}{{homePageUrl}}{{instagramUrl}}{{footer}}</html>',
       );
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
       const post = { id: 7, title: 'Test Piece', description: 'Desc', image_url: 'img.jpg' };
-      await mailer.sendNewPostEmail({ to: 'to@example.com', post });
+      await mailer.sendNewPostEmail({
+        to: 'to@example.com',
+        post,
+        unsubscribeUrl: UNSUBSCRIBE_URL,
+      });
       expect(readFileSyncMock).toHaveBeenCalledWith(
         expect.stringContaining('newPostEmail.html'),
         'utf8',
@@ -224,6 +278,8 @@ describe('mailer', () => {
       // post data flows through and URL points at /:id (not /posts/:id)
       expect(sentArgs.html).toContain('Test Piece');
       expect(sentArgs.html).toContain('http://localhost:3001/7');
+      expect(sentArgs.html).toContain(`href="${UNSUBSCRIBE_URL}"`);
+      expect(sentArgs.html).toContain(POSTAL_ADDRESS);
       // no unrendered placeholders leak into the email
       expect(sentArgs.html).not.toContain('{{');
       expect(logSpy).toHaveBeenCalledWith(
@@ -235,15 +291,17 @@ describe('mailer', () => {
       readFileSyncMock.mockReturnValue('<html></html>');
       const post = { id: 7, title: 'Test Piece', description: 'Desc', image_url: 'img.jpg' };
       sendMailMock.mockRejectedValueOnce(new Error('smtp fail'));
-      await expect(mailer.sendNewPostEmail({ to: 'to@example.com', post })).rejects.toThrow(
-        'smtp fail',
-      );
+      await expect(
+        mailer.sendNewPostEmail({ to: 'to@example.com', post, unsubscribeUrl: UNSUBSCRIBE_URL }),
+      ).rejects.toThrow('smtp fail');
     });
     it('should throw if MAIL_FROM is missing', async () => {
       readFileSyncMock.mockReturnValue('<html></html>');
       const post = { id: 7, title: 'Test Piece', description: 'Desc', image_url: 'img.jpg' };
       delete process.env.MAIL_FROM;
-      await expect(mailer.sendNewPostEmail({ to: 'to@example.com', post })).rejects.toThrow();
+      await expect(
+        mailer.sendNewPostEmail({ to: 'to@example.com', post, unsubscribeUrl: UNSUBSCRIBE_URL }),
+      ).rejects.toThrow();
     });
   });
 
@@ -288,7 +346,7 @@ describe('mailer', () => {
   describe('sendMassEmail', () => {
     it('renders the mass-email template with subject and escaped body, newlines as <br>', async () => {
       readFileSyncMock.mockReturnValue(
-        '<html>{{subject}}|{{messageBody}}|{{homePageUrl}}|{{instagramUrl}}</html>',
+        '<html>{{subject}}|{{messageBody}}|{{homePageUrl}}|{{instagramUrl}}|{{footer}}</html>',
       );
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
       await mailer.sendMassEmail({
@@ -311,10 +369,30 @@ describe('mailer', () => {
       expect(sentArgs.html).not.toContain('<two>');
       // no unrendered placeholders remain
       expect(sentArgs.html).not.toContain('{{');
+      // without an unsubscribe link this is an announcement: no opt-out, no marketing footer
+      expect(sentArgs.html).toContain('account notice sent to every Stress Less Glass customer');
+      expect(sentArgs.html).not.toContain('Unsubscribe');
+      expect(sentArgs.html).not.toContain(POSTAL_ADDRESS);
       expect(logSpy).toHaveBeenCalledWith(
         expect.stringContaining('Mass email sent to: to@example.com'),
       );
       logSpy.mockRestore();
+    });
+
+    it('renders the unsubscribe link and postal address for a promotion', async () => {
+      readFileSyncMock.mockReturnValue('<html>{{messageBody}}|{{footer}}</html>');
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      await mailer.sendMassEmail({
+        to: 'to@example.com',
+        subject: 'Sale',
+        message: 'Everything is 20% off',
+        unsubscribeUrl: UNSUBSCRIBE_URL,
+      });
+
+      const sentHtml = sendMailMock.mock.calls[0][0].html;
+      expect(sentHtml).toContain(`href="${UNSUBSCRIBE_URL}"`);
+      expect(sentHtml).toContain(POSTAL_ADDRESS);
+      expect(sentHtml).toContain('sales and promotions');
     });
 
     it('should throw if sendMail fails', async () => {
