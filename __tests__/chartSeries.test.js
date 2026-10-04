@@ -34,6 +34,17 @@ const insertOrderAt = async ({ buyerId, items, shippingCost, createdAtUtc }) => 
     order.id,
     createdAtUtc,
   ]);
+  await pool.query('UPDATE gallery_post_sales SET created_at = $2 WHERE order_id = $1', [
+    order.id,
+    createdAtUtc,
+  ]);
+};
+
+const setPostDates = async (postId, { createdAtUtc, deletedAtUtc = null }) => {
+  await pool.query(
+    'UPDATE gallery_posts SET created_at = $2, deleted_at = $3, is_deleted = $3 IS NOT NULL WHERE id = $1',
+    [postId, createdAtUtc, deletedAtUtc],
+  );
 };
 
 const insertAuctionWinAt = async ({ creatorId, winnerId, finalBid, closedAtUtc }) => {
@@ -299,6 +310,82 @@ describe('GET /api/v1/admin/chart-series', () => {
     expect(chartSeries.buckets[0]).toBe('2026-06-01');
     expect(valueAt(chartSeries, 'conversionRate', '2026-06-01')).toBe(0);
     expect(valueAt(chartSeries, 'conversionRate', '2026-06-15')).toBe(0.5);
+  });
+
+  it('does not count a piece deleted in the week it was posted', async () => {
+    const [adminAgent] = await loginAsAdmin();
+    await setPostDates(1, { createdAtUtc: '2026-06-03 18:00:00' });
+    await setPostDates(2, {
+      createdAtUtc: '2026-06-02 18:00:00',
+      deletedAtUtc: '2026-06-10 18:00:00',
+    });
+    await setPostDates(3, {
+      createdAtUtc: '2026-06-02 18:00:00',
+      deletedAtUtc: '2026-06-04 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(chartSeries.buckets[0]).toBe('2026-06-01');
+    expect(valueAt(chartSeries, 'piecesPosted', '2026-06-01')).toBe(2);
+  });
+
+  it('counts a piece posted on day 0 and sold on day 10 as 10 days to sell', async () => {
+    const [adminAgent] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setPostDates(1, { createdAtUtc: '2026-06-01 18:00:00' });
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-11 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'piecesSold', '2026-06-08')).toBe(1);
+    expect(valueAt(chartSeries, 'medianDaysToSell', '2026-06-08')).toBe(10);
+  });
+
+  it('takes the median of sales at 4 and 20 days as 12', async () => {
+    const [adminAgent] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setPostDates(1, { createdAtUtc: '2026-06-01 18:00:00' });
+    await setPostDates(2, { createdAtUtc: '2026-05-14 18:00:00' });
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-05 18:00:00',
+    });
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 2, price: 50 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-03 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'piecesSold', '2026-06-01')).toBe(2);
+    expect(valueAt(chartSeries, 'medianDaysToSell', '2026-06-01')).toBe(12);
+  });
+
+  it('returns null, not 0, for median days to sell in a week with no sales', async () => {
+    const [adminAgent] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setPostDates(1, { createdAtUtc: '2026-06-01 18:00:00' });
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-11 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'piecesSold', '2026-06-01')).toBe(0);
+    expect(valueAt(chartSeries, 'medianDaysToSell', '2026-06-01')).toBeNull();
   });
 
   it('returns 400 for an unknown granularity', async () => {
