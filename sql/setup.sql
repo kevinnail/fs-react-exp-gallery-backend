@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS auction_notifications CASCADE;
 DROP TABLE IF EXISTS gallery_post_sales CASCADE;
 DROP TABLE IF EXISTS sales_orders CASCADE;
 DROP TABLE IF EXISTS error_logs CASCADE;
+DROP TABLE IF EXISTS daily_metric_snapshots CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -178,6 +179,17 @@ CREATE TABLE error_logs (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   error TEXT NOT NULL,
   context TEXT
+);
+
+CREATE TABLE daily_metric_snapshots (
+  snapshot_date DATE PRIMARY KEY,
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  outstanding_gallery NUMERIC(10,2) NOT NULL,
+  outstanding_auction NUMERIC(10,2) NOT NULL,
+  reachable_by_email INTEGER NOT NULL,
+  inventory_for_sale_count INTEGER NOT NULL,
+  inventory_for_sale_value NUMERIC(10,2) NOT NULL,
+  hidden_post_count INTEGER NOT NULL
 );
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
