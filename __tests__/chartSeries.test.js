@@ -47,23 +47,41 @@ const setPostDates = async (postId, { createdAtUtc, deletedAtUtc = null }) => {
   );
 };
 
-const insertAuctionWinAt = async ({ creatorId, winnerId, finalBid, closedAtUtc }) => {
+const insertClosedAuction = async ({
+  creatorId,
+  winnerId = null,
+  finalBid = null,
+  startPrice = 1,
+  closedReason = 'expired',
+  closedAtUtc,
+}) => {
   const {
     rows: [auction],
   } = await pool.query(
     `
     INSERT INTO auctions (title, image_urls, start_price, is_active, end_time, creator_id)
-    VALUES ('Auction piece', '{}', 1, FALSE, NOW() - INTERVAL '1 day', $1)
+    VALUES ('Auction piece', '{}', $2, FALSE, NOW() - INTERVAL '1 day', $1)
     RETURNING id
     `,
-    [creatorId],
+    [creatorId, startPrice],
   );
   await pool.query(
     `
     INSERT INTO auction_results (auction_id, winner_id, final_bid, closed_reason, closed_at)
-    VALUES ($1, $2, $3, 'expired', $4)
+    VALUES ($1, $2, $3, $4, $5)
     `,
-    [auction.id, winnerId, finalBid, closedAtUtc],
+    [auction.id, winnerId, finalBid, closedReason, closedAtUtc],
+  );
+  return auction.id;
+};
+
+const insertAuctionWinAt = ({ creatorId, winnerId, finalBid, closedAtUtc }) =>
+  insertClosedAuction({ creatorId, winnerId, finalBid, closedAtUtc });
+
+const insertBidAt = async ({ auctionId, userId, bidAmount, createdAtUtc }) => {
+  await pool.query(
+    'INSERT INTO bids (auction_id, user_id, bid_amount, created_at) VALUES ($1, $2, $3, $4)',
+    [auctionId, userId, bidAmount, createdAtUtc],
   );
 };
 
@@ -386,6 +404,122 @@ describe('GET /api/v1/admin/chart-series', () => {
 
     expect(valueAt(chartSeries, 'piecesSold', '2026-06-01')).toBe(0);
     expect(valueAt(chartSeries, 'medianDaysToSell', '2026-06-01')).toBeNull();
+  });
+
+  it('lowers sell-through for an expired auction with no bids', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 80,
+      closedAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertClosedAuction({ creatorId: admin.id, closedAtUtc: '2026-06-04 18:00:00' });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'auctionsClosed', '2026-06-01')).toBe(2);
+    expect(valueAt(chartSeries, 'auctionSellThrough', '2026-06-01')).toBe(0.5);
+  });
+
+  it('counts a buy-now close in buy-now share', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 120,
+      closedReason: 'buy_now',
+      closedAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 80,
+      closedAtUtc: '2026-06-04 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'buyNowShare', '2026-06-01')).toBe(0.5);
+  });
+
+  it('gives final over start of 1.5 for an auction opening at 50 and closing at 75', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 75,
+      startPrice: 50,
+      closedAtUtc: '2026-06-03 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'finalOverStart', '2026-06-01')).toBe(1.5);
+  });
+
+  it('counts bids per closed auction and unique bidders by bid date', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const firstBidder = await createCustomer('first@example.com');
+    const secondBidder = await createCustomer('second@example.com');
+    const auctionId = await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: secondBidder.id,
+      finalBid: 30,
+      closedAtUtc: '2026-06-10 18:00:00',
+    });
+    await insertClosedAuction({ creatorId: admin.id, closedAtUtc: '2026-06-11 18:00:00' });
+    await insertBidAt({
+      auctionId,
+      userId: firstBidder.id,
+      bidAmount: 10,
+      createdAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertBidAt({
+      auctionId,
+      userId: secondBidder.id,
+      bidAmount: 20,
+      createdAtUtc: '2026-06-04 18:00:00',
+    });
+    await insertBidAt({
+      auctionId,
+      userId: secondBidder.id,
+      bidAmount: 30,
+      createdAtUtc: '2026-06-05 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'uniqueBidders', '2026-06-01')).toBe(2);
+    expect(valueAt(chartSeries, 'bidsPerAuction', '2026-06-08')).toBe(1.5);
+  });
+
+  it('returns null, not 0 or NaN, for auction ratios in a week with no closed auctions', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 80,
+      closedAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertClosedAuction({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 80,
+      closedAtUtc: '2026-06-17 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'auctionsClosed', '2026-06-08')).toBe(0);
+    expect(valueAt(chartSeries, 'auctionSellThrough', '2026-06-08')).toBeNull();
+    expect(valueAt(chartSeries, 'buyNowShare', '2026-06-08')).toBeNull();
+    expect(valueAt(chartSeries, 'finalOverStart', '2026-06-08')).toBeNull();
+    expect(valueAt(chartSeries, 'bidsPerAuction', '2026-06-08')).toBeNull();
   });
 
   it('returns 400 for an unknown granularity', async () => {
