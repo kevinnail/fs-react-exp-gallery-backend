@@ -56,6 +56,13 @@ const insertAuctionWinAt = async ({ creatorId, winnerId, finalBid, closedAtUtc }
   );
 };
 
+const setSignupDate = async (userId, createdAtUtc) => {
+  await pool.query('UPDATE profiles SET created_at = $2 WHERE user_id = $1', [
+    userId,
+    createdAtUtc,
+  ]);
+};
+
 const currentPacificBucket = async (granularity) => {
   const {
     rows: [row],
@@ -173,6 +180,125 @@ describe('GET /api/v1/admin/chart-series', () => {
     expect(chartSeries.buckets[0]).toBe('2026-07-01');
     expect(valueAt(chartSeries, 'galleryRevenue', '2026-07-01')).toBe(100);
     expect(valueAt(chartSeries, 'galleryRevenue', '2026-08-01')).toBe(0);
+  });
+
+  it('counts orders, items sold and signups in their week', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setSignupDate(admin.id, '2026-05-01 18:00:00');
+    await setSignupDate(buyer.id, '2026-06-02 18:00:00');
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [
+        { postId: 1, price: 100 },
+        { postId: 2, price: 50 },
+      ],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertAuctionWinAt({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 80,
+      closedAtUtc: '2026-06-04 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'orderCount', '2026-06-01')).toBe(2);
+    expect(valueAt(chartSeries, 'itemsSold', '2026-06-01')).toBe(3);
+    expect(valueAt(chartSeries, 'signups', '2026-06-01')).toBe(1);
+    expect(valueAt(chartSeries, 'signups', '2026-04-27')).toBe(1);
+  });
+
+  it('counts a second order as returning and not as a first-time buyer', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setSignupDate(admin.id, '2026-05-01 18:00:00');
+    await setSignupDate(buyer.id, '2026-05-01 18:00:00');
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 2, price: 50 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-17 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'firstTimeBuyers', '2026-06-01')).toBe(1);
+    expect(valueAt(chartSeries, 'returningBuyerOrders', '2026-06-01')).toBe(0);
+    expect(valueAt(chartSeries, 'firstTimeBuyers', '2026-06-15')).toBe(0);
+    expect(valueAt(chartSeries, 'returningBuyerOrders', '2026-06-15')).toBe(1);
+  });
+
+  it('counts a buyer whose first purchase is an auction win as first-time exactly once', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setSignupDate(admin.id, '2026-05-01 18:00:00');
+    await setSignupDate(buyer.id, '2026-05-01 18:00:00');
+    await insertAuctionWinAt({
+      creatorId: admin.id,
+      winnerId: buyer.id,
+      finalBid: 80,
+      closedAtUtc: '2026-06-03 18:00:00',
+    });
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-17 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+    const sum = (values) => values.reduce((total, value) => total + value, 0);
+
+    expect(valueAt(chartSeries, 'firstTimeBuyers', '2026-06-01')).toBe(1);
+    expect(valueAt(chartSeries, 'returningBuyerOrders', '2026-06-15')).toBe(1);
+    expect(sum(chartSeries.series.firstTimeBuyers)).toBe(1);
+    expect(sum(chartSeries.series.returningBuyerOrders)).toBe(1);
+  });
+
+  it('gives conversion of 0.5 at the end of a week with two signups and one buyer', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setSignupDate(admin.id, '2026-06-02 18:00:00');
+    await setSignupDate(buyer.id, '2026-06-02 18:00:00');
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-03 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(valueAt(chartSeries, 'conversionRate', '2026-06-01')).toBe(0.5);
+    expect(valueAt(chartSeries, 'conversionRate', '2026-06-08')).toBe(0.5);
+  });
+
+  it('gives conversion of 0, not NaN, for a period with no signups yet', async () => {
+    const [adminAgent, admin] = await loginAsAdmin();
+    const buyer = await createCustomer('buyer@example.com');
+    await setSignupDate(admin.id, '2026-06-17 18:00:00');
+    await setSignupDate(buyer.id, '2026-06-17 18:00:00');
+    await insertOrderAt({
+      buyerId: buyer.id,
+      items: [{ postId: 1, price: 100 }],
+      shippingCost: 0,
+      createdAtUtc: '2026-06-03 18:00:00',
+    });
+
+    const chartSeries = await fetchChartSeries(adminAgent, { granularity: 'week', range: 'all' });
+
+    expect(chartSeries.buckets[0]).toBe('2026-06-01');
+    expect(valueAt(chartSeries, 'conversionRate', '2026-06-01')).toBe(0);
+    expect(valueAt(chartSeries, 'conversionRate', '2026-06-15')).toBe(0.5);
   });
 
   it('returns 400 for an unknown granularity', async () => {
