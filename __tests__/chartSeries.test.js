@@ -42,7 +42,7 @@ const insertOrderAt = async ({ buyerId, items, shippingCost, createdAtUtc }) => 
 
 const setPostDates = async (postId, { createdAtUtc, deletedAtUtc = null }) => {
   await pool.query(
-    'UPDATE gallery_posts SET created_at = $2, deleted_at = $3, is_deleted = $3 IS NOT NULL WHERE id = $1',
+    'UPDATE gallery_posts SET created_at = $2, deleted_at = $3::timestamp, is_deleted = $3::timestamp IS NOT NULL WHERE id = $1',
     [postId, createdAtUtc, deletedAtUtc],
   );
 };
