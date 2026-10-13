@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS gallery_post_sales CASCADE;
 DROP TABLE IF EXISTS sales_orders CASCADE;
 DROP TABLE IF EXISTS error_logs CASCADE;
 DROP TABLE IF EXISTS daily_metric_snapshots CASCADE;
+DROP TABLE IF EXISTS blog_posts CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -190,6 +191,17 @@ CREATE TABLE daily_metric_snapshots (
   inventory_for_sale_count INTEGER NOT NULL,
   inventory_for_sale_value NUMERIC(10,2) NOT NULL,
   hidden_post_count INTEGER NOT NULL
+);
+
+CREATE TABLE blog_posts (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  slug VARCHAR NOT NULL UNIQUE,
+  title VARCHAR NOT NULL,
+  category VARCHAR NOT NULL,
+  blocks JSONB NOT NULL DEFAULT '[]',
+  published_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
