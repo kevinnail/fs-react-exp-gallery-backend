@@ -1,4 +1,9 @@
-const { slugify, validateBlocks, excerptFromBlocks } = require('../lib/utils/blogBlocks');
+const {
+  slugify,
+  validateBlocks,
+  toStoredBlocks,
+  excerptFromBlocks,
+} = require('../lib/utils/blogBlocks');
 
 describe('slugify', () => {
   it('lowercases and joins words with single dashes', () => {
@@ -62,11 +67,55 @@ describe('validateBlocks', () => {
     ).toBe('Block 2 repeats the id of an earlier block');
   });
 
-  it('rejects a missing or unknown type, including images until image upload exists', () => {
+  it('rejects a missing or unknown type', () => {
     expect(validateBlocks([{ id: 'block-a', body: '' }])).toBe('Block 1 has an unknown type');
-    expect(validateBlocks([{ id: 'block-a', type: 'images', images: [] }])).toBe(
+    expect(validateBlocks([{ id: 'block-a', type: 'video', url: 'x' }])).toBe(
       'Block 1 has an unknown type',
     );
+  });
+
+  it('accepts an images block whose images belong to the post, and an empty one', () => {
+    const ownedImageIds = new Set(['12', '13']);
+
+    expect(
+      validateBlocks(
+        [
+          {
+            id: 'block-a',
+            type: 'images',
+            images: [
+              { imageId: '12', caption: 'Ridge' },
+              { imageId: 13, caption: '' },
+            ],
+          },
+          { id: 'block-b', type: 'images', images: [] },
+        ],
+        ownedImageIds,
+      ),
+    ).toBeNull();
+  });
+
+  it('rejects an image that does not belong to the post', () => {
+    expect(
+      validateBlocks(
+        [{ id: 'block-a', type: 'images', images: [{ imageId: '99', caption: '' }] }],
+        new Set(['12']),
+      ),
+    ).toBe('Block 1 image 1 is not an image uploaded to this post');
+  });
+
+  it('rejects images that are not a list, and a caption that is not text', () => {
+    const ownedImageIds = new Set(['12']);
+
+    expect(validateBlocks([{ id: 'block-a', type: 'images' }], ownedImageIds)).toBe(
+      'Block 1 images must be a list',
+    );
+    expect(
+      validateBlocks(
+        [{ id: 'block-a', type: 'images', images: [{ imageId: '12', caption: null }] }],
+        ownedImageIds,
+      ),
+    ).toBe('Block 1 image 1 caption must be text');
   });
 
   it('rejects a text body that is not a string', () => {
@@ -74,6 +123,24 @@ describe('validateBlocks', () => {
       'Block 1 text must be a string',
     );
     expect(validateBlocks([{ id: 'block-a', type: 'text' }])).toBe('Block 1 text must be a string');
+  });
+});
+
+describe('toStoredBlocks', () => {
+  it('keeps only the stored fields, dropping image URLs and anything extra', () => {
+    expect(
+      toStoredBlocks([
+        { id: 'block-a', type: 'text', body: 'Trailhead.', extra: true },
+        {
+          id: 'block-b',
+          type: 'images',
+          images: [{ imageId: 12, caption: 'Ridge', imageUrl: 'https://cdn.example.com/a.jpg' }],
+        },
+      ]),
+    ).toEqual([
+      { id: 'block-a', type: 'text', body: 'Trailhead.' },
+      { id: 'block-b', type: 'images', images: [{ imageId: '12', caption: 'Ridge' }] },
+    ]);
   });
 });
 
