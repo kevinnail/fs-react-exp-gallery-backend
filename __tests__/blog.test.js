@@ -181,4 +181,127 @@ describe('admin blog routes', () => {
       expect(resp.status).toBe(403);
     });
   });
+
+  describe('PUT and GET /api/v1/admin/blog/:id', () => {
+    const textBlocks = [
+      { id: 'block-a', type: 'text', body: 'Trailhead at dawn.' },
+      { id: 'block-b', type: 'text', body: 'The **ridge** above camp.' },
+      { id: 'block-c', type: 'text', body: '' },
+    ];
+
+    const createDraft = async (agent) => {
+      const resp = await agent
+        .post('/api/v1/admin/blog')
+        .send({ title: 'Ridge Hike', category: 'Hiking' });
+      return resp.body;
+    };
+
+    const storedRow = async (id) => {
+      const { rows } = await pool.query('SELECT * FROM blog_posts WHERE id = $1', [id]);
+      return rows[0];
+    };
+
+    it('saves title, category and blocks, and GET returns blocks in the same order', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      const reordered = [textBlocks[2], textBlocks[0], textBlocks[1]];
+      await pool.query("UPDATE blog_posts SET updated_at = '2026-01-01' WHERE id = $1", [draft.id]);
+
+      const putResp = await agent
+        .put(`/api/v1/admin/blog/${draft.id}`)
+        .send({ title: 'Ridge Hike, Day Two', category: 'Backpacking', blocks: reordered });
+
+      expect(putResp.status).toBe(200);
+      expect(putResp.body.title).toBe('Ridge Hike, Day Two');
+      expect(putResp.body.category).toBe('Backpacking');
+
+      const getResp = await agent.get(`/api/v1/admin/blog/${draft.id}`);
+      expect(getResp.status).toBe(200);
+      expect(getResp.body.blocks).toEqual(reordered);
+      // The slug is fixed at creation so shared links survive title edits.
+      expect(getResp.body.slug).toBe('ridge-hike');
+      expect((await storedRow(draft.id)).updated_at.getTime()).toBeGreaterThan(
+        new Date('2026-01-01').getTime(),
+      );
+    });
+
+    it('reuses another post category case-insensitively but lets a post fix its own case', async () => {
+      const [agent] = await registerAndLogin();
+      await agent.post('/api/v1/admin/blog').send({ title: 'Glass day', category: 'Glass' });
+      const draft = await createDraft(agent);
+
+      const joined = await agent
+        .put(`/api/v1/admin/blog/${draft.id}`)
+        .send({ title: 'Ridge Hike', category: 'glass', blocks: [] });
+      expect(joined.body.category).toBe('Glass');
+
+      const solo = await agent
+        .post('/api/v1/admin/blog')
+        .send({ title: 'Telescope', category: 'astro' });
+      const recased = await agent
+        .put(`/api/v1/admin/blog/${solo.body.id}`)
+        .send({ title: 'Telescope', category: 'Astro', blocks: [] });
+      expect(recased.body.category).toBe('Astro');
+    });
+
+    it('returns 400 for a block missing its type and leaves the row unchanged', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      await agent
+        .put(`/api/v1/admin/blog/${draft.id}`)
+        .send({ title: 'Ridge Hike', category: 'Hiking', blocks: textBlocks });
+
+      const resp = await agent.put(`/api/v1/admin/blog/${draft.id}`).send({
+        title: 'Should not save',
+        category: 'Hiking',
+        blocks: [{ id: 'block-x', body: 'No type' }],
+      });
+
+      expect(resp.status).toBe(400);
+      expect(resp.body.message).toBe('Block 1 has an unknown type');
+      const row = await storedRow(draft.id);
+      expect(row.title).toBe('Ridge Hike');
+      expect(row.blocks).toEqual(textBlocks);
+    });
+
+    it('returns 400 for a text block whose body is not a string', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+
+      const resp = await agent.put(`/api/v1/admin/blog/${draft.id}`).send({
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        blocks: [{ id: 'block-x', type: 'text', body: 42 }],
+      });
+
+      expect(resp.status).toBe(400);
+      expect(resp.body.message).toBe('Block 1 text must be a string');
+      expect((await storedRow(draft.id)).blocks).toEqual([]);
+    });
+
+    it('returns 404 for an unknown id on GET and PUT', async () => {
+      const [agent] = await registerAndLogin();
+
+      const getResp = await agent.get('/api/v1/admin/blog/999999');
+      const putResp = await agent
+        .put('/api/v1/admin/blog/999999')
+        .send({ title: 'Ghost', category: 'General', blocks: [] });
+
+      expect(getResp.status).toBe(404);
+      expect(putResp.status).toBe(404);
+    });
+
+    it('returns 403 for a customer PUT and leaves the row unchanged', async () => {
+      const [adminAgent] = await registerAndLogin();
+      const draft = await createDraft(adminAgent);
+      const [customerAgent] = await registerAndLogin({ email: 'customer@example.com' });
+
+      const resp = await customerAgent
+        .put(`/api/v1/admin/blog/${draft.id}`)
+        .send({ title: 'Hijacked', category: 'General', blocks: [] });
+
+      expect(resp.status).toBe(403);
+      expect((await storedRow(draft.id)).title).toBe('Ridge Hike');
+    });
+  });
 });
