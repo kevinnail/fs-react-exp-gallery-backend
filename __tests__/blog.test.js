@@ -304,4 +304,116 @@ describe('admin blog routes', () => {
       expect((await storedRow(draft.id)).title).toBe('Ridge Hike');
     });
   });
+
+  describe('publishing and the public blog', () => {
+    const createDraft = async (agent, { title, category, body }) => {
+      const created = await agent.post('/api/v1/admin/blog').send({ title, category });
+      await agent.put(`/api/v1/admin/blog/${created.body.id}`).send({
+        title,
+        category,
+        blocks: [{ id: 'block-a', type: 'text', body }],
+      });
+      return created.body;
+    };
+
+    it('hides a draft from the public list and its slug until it is published', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent, {
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        body: 'We hit the **ridge** at [sunrise](https://example.com).',
+      });
+
+      const draftList = await request(app).get('/api/v1/blog');
+      const draftBySlug = await request(app).get('/api/v1/blog/ridge-hike');
+      expect(draftList.status).toBe(200);
+      expect(draftList.body).toEqual([]);
+      expect(draftBySlug.status).toBe(404);
+
+      const publishResp = await agent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
+      expect(publishResp.status).toBe(200);
+      expect(publishResp.body.publishedAt).not.toBeNull();
+
+      const publishedList = await request(app).get('/api/v1/blog');
+      expect(publishedList.body).toEqual([
+        {
+          id: draft.id,
+          slug: 'ridge-hike',
+          title: 'Ridge Hike',
+          category: 'Hiking',
+          publishedAt: publishResp.body.publishedAt,
+          excerpt: 'We hit the ridge at sunrise.',
+        },
+      ]);
+
+      const publishedBySlug = await request(app).get('/api/v1/blog/ridge-hike');
+      expect(publishedBySlug.status).toBe(200);
+      expect(publishedBySlug.body.title).toBe('Ridge Hike');
+      expect(publishedBySlug.body.blocks).toEqual([
+        {
+          id: 'block-a',
+          type: 'text',
+          body: 'We hit the **ridge** at [sunrise](https://example.com).',
+        },
+      ]);
+    });
+
+    it('lists published posts newest first', async () => {
+      const [agent] = await registerAndLogin();
+      const older = await createDraft(agent, { title: 'Older', category: 'Glass', body: 'a' });
+      const newer = await createDraft(agent, { title: 'Newer', category: 'Tech', body: 'b' });
+      await agent.patch(`/api/v1/admin/blog/${older.id}/publish`);
+      await agent.patch(`/api/v1/admin/blog/${newer.id}/publish`);
+      await pool.query("UPDATE blog_posts SET published_at = '2026-01-01' WHERE id = $1", [
+        older.id,
+      ]);
+
+      const resp = await request(app).get('/api/v1/blog');
+
+      expect(resp.body.map((post) => post.slug)).toEqual(['newer', 'older']);
+    });
+
+    it('keeps the original publish date when a post is published again', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent, {
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        body: 'a',
+      });
+      await agent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
+      await pool.query("UPDATE blog_posts SET published_at = '2026-01-01' WHERE id = $1", [
+        draft.id,
+      ]);
+
+      const resp = await agent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
+
+      expect(resp.status).toBe(200);
+      const { rows } = await pool.query('SELECT published_at FROM blog_posts WHERE id = $1', [
+        draft.id,
+      ]);
+      expect(rows[0].published_at.getTime()).toBe(new Date('2026-01-01T00:00:00').getTime());
+    });
+
+    it('returns 404 when publishing an unknown id', async () => {
+      const [agent] = await registerAndLogin();
+      const resp = await agent.patch('/api/v1/admin/blog/999999/publish');
+
+      expect(resp.status).toBe(404);
+    });
+
+    it('returns 403 when a customer tries to publish, and the post stays a draft', async () => {
+      const [adminAgent] = await registerAndLogin();
+      const draft = await createDraft(adminAgent, {
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        body: 'a',
+      });
+      const [customerAgent] = await registerAndLogin({ email: 'customer@example.com' });
+
+      const resp = await customerAgent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
+
+      expect(resp.status).toBe(403);
+      expect((await request(app).get('/api/v1/blog/ridge-hike')).status).toBe(404);
+    });
+  });
 });
