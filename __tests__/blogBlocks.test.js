@@ -1,4 +1,4 @@
-const { slugify } = require('../lib/utils/blogBlocks');
+const { slugify, validateBlocks } = require('../lib/utils/blogBlocks');
 
 describe('slugify', () => {
   it('lowercases and joins words with single dashes', () => {
@@ -19,5 +19,60 @@ describe('slugify', () => {
 
   it('returns an empty string when nothing alphanumeric remains', () => {
     expect(slugify('!!! 🌌 ???')).toBe('');
+  });
+});
+
+describe('validateBlocks', () => {
+  it('accepts an empty list', () => {
+    expect(validateBlocks([])).toBeNull();
+  });
+
+  it('accepts text blocks, including an empty body', () => {
+    expect(
+      validateBlocks([
+        { id: 'block-a', type: 'text', body: 'Trailhead at dawn.' },
+        { id: 'block-b', type: 'text', body: '' },
+      ]),
+    ).toBeNull();
+  });
+
+  it('rejects anything that is not a list', () => {
+    expect(validateBlocks(undefined)).toBe('Blocks must be a list');
+    expect(validateBlocks({ id: 'block-a', type: 'text', body: '' })).toBe('Blocks must be a list');
+  });
+
+  it('rejects a block that is not an object, naming its position', () => {
+    expect(validateBlocks([{ id: 'block-a', type: 'text', body: '' }, 'loose text'])).toBe(
+      'Block 2 must be an object',
+    );
+    expect(validateBlocks([null])).toBe('Block 1 must be an object');
+  });
+
+  it('rejects a missing or empty id', () => {
+    expect(validateBlocks([{ type: 'text', body: '' }])).toBe('Block 1 needs an id');
+    expect(validateBlocks([{ id: '', type: 'text', body: '' }])).toBe('Block 1 needs an id');
+  });
+
+  it('rejects a repeated id', () => {
+    expect(
+      validateBlocks([
+        { id: 'block-a', type: 'text', body: 'one' },
+        { id: 'block-a', type: 'text', body: 'two' },
+      ]),
+    ).toBe('Block 2 repeats the id of an earlier block');
+  });
+
+  it('rejects a missing or unknown type, including images until image upload exists', () => {
+    expect(validateBlocks([{ id: 'block-a', body: '' }])).toBe('Block 1 has an unknown type');
+    expect(validateBlocks([{ id: 'block-a', type: 'images', images: [] }])).toBe(
+      'Block 1 has an unknown type',
+    );
+  });
+
+  it('rejects a text body that is not a string', () => {
+    expect(validateBlocks([{ id: 'block-a', type: 'text', body: 42 }])).toBe(
+      'Block 1 text must be a string',
+    );
+    expect(validateBlocks([{ id: 'block-a', type: 'text' }])).toBe('Block 1 text must be a string');
   });
 });
