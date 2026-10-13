@@ -4,6 +4,16 @@ const request = require('supertest');
 const app = require('../lib/app');
 const UserService = require('../lib/services/UserService');
 
+jest.mock('@aws-sdk/client-s3', () => {
+  const send = jest.fn().mockResolvedValue({});
+  return {
+    S3Client: jest.fn(() => ({ send })),
+    PutObjectCommand: jest.fn(),
+    DeleteObjectCommand: jest.fn(),
+  };
+});
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+
 // test@example.com is configured as an admin (in ALLOWED_EMAILS) for the test env
 const adminUser = { email: 'test@example.com', password: 'Test1234!' };
 
@@ -24,6 +34,7 @@ const blogRowCount = async () => {
 
 describe('admin blog routes', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     return setup(pool);
   });
 
@@ -342,6 +353,7 @@ describe('admin blog routes', () => {
           title: 'Ridge Hike',
           category: 'Hiking',
           publishedAt: publishResp.body.publishedAt,
+          coverImageUrl: null,
           excerpt: 'We hit the ridge at sunrise.',
         },
       ]);
@@ -414,6 +426,168 @@ describe('admin blog routes', () => {
 
       expect(resp.status).toBe(403);
       expect((await request(app).get('/api/v1/blog/ridge-hike')).status).toBe(404);
+    });
+  });
+
+  describe('blog images', () => {
+    const imageBytes = Buffer.from('not really a jpeg, S3 is mocked');
+
+    const createDraft = async (agent, title = 'Ridge Hike') => {
+      const resp = await agent.post('/api/v1/admin/blog').send({ title, category: 'Hiking' });
+      return resp.body;
+    };
+
+    const uploadImages = (agent, postId, fileNames) => {
+      let uploadRequest = agent.post(`/api/v1/admin/blog/${postId}/images`);
+      for (const fileName of fileNames) {
+        uploadRequest = uploadRequest.attach('imageFiles', imageBytes, {
+          filename: fileName,
+          contentType: 'image/jpeg',
+        });
+      }
+      return uploadRequest;
+    };
+
+    const imageRowsFor = async (postId) => {
+      const { rows } = await pool.query(
+        'SELECT id, public_id FROM blog_images WHERE post_id = $1 ORDER BY id',
+        [postId],
+      );
+      return rows;
+    };
+
+    it('uploads each file to S3 under the blog prefix and records a row for it', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+
+      const resp = await uploadImages(agent, draft.id, ['ridge.jpg', 'camp.jpg']);
+
+      expect(resp.status).toBe(200);
+      expect(resp.body).toEqual([
+        { id: expect.any(String), imageUrl: expect.stringContaining('ridge.jpg') },
+        { id: expect.any(String), imageUrl: expect.stringContaining('camp.jpg') },
+      ]);
+      expect(PutObjectCommand).toHaveBeenCalledTimes(2);
+      const firstKey = PutObjectCommand.mock.calls[0][0].Key;
+      expect(firstKey.startsWith('stress-less-glass-blog-images/')).toBe(true);
+      expect(resp.body[0].imageUrl.endsWith(firstKey)).toBe(true);
+
+      const rows = await imageRowsFor(draft.id);
+      expect(rows.map((row) => String(row.id))).toEqual(resp.body.map((image) => image.id));
+    });
+
+    it('returns 400 when no files are sent', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+
+      const resp = await agent.post(`/api/v1/admin/blog/${draft.id}/images`);
+
+      expect(resp.status).toBe(400);
+      expect(PutObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 for an unknown post and uploads nothing', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await uploadImages(agent, '999999', ['ridge.jpg']);
+
+      expect(resp.status).toBe(404);
+      expect(PutObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 for a customer upload and uploads nothing', async () => {
+      const [adminAgent] = await registerAndLogin();
+      const draft = await createDraft(adminAgent);
+      const [customerAgent] = await registerAndLogin({ email: 'customer@example.com' });
+
+      const resp = await uploadImages(customerAgent, draft.id, ['ridge.jpg']);
+
+      expect(resp.status).toBe(403);
+      expect(PutObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('rejects a PUT that references an image uploaded to a different post', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      const otherDraft = await createDraft(agent, 'Other Hike');
+      const [otherImage] = (await uploadImages(agent, otherDraft.id, ['other.jpg'])).body;
+
+      const resp = await agent.put(`/api/v1/admin/blog/${draft.id}`).send({
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        blocks: [
+          { id: 'block-a', type: 'images', images: [{ imageId: otherImage.id, caption: '' }] },
+        ],
+      });
+
+      expect(resp.status).toBe(400);
+      expect(resp.body.message).toBe('Block 1 image 1 is not an image uploaded to this post');
+      const { rows } = await pool.query('SELECT blocks FROM blog_posts WHERE id = $1', [draft.id]);
+      expect(rows[0].blocks).toEqual([]);
+    });
+
+    it('deletes the row and S3 object of an image a save drops, and keeps the rest', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      const [keptImage] = (await uploadImages(agent, draft.id, ['kept.jpg', 'dropped.jpg'])).body;
+      const droppedPublicId = (await imageRowsFor(draft.id))[1].public_id;
+
+      const resp = await agent.put(`/api/v1/admin/blog/${draft.id}`).send({
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        blocks: [
+          {
+            id: 'block-a',
+            type: 'images',
+            images: [{ imageId: keptImage.id, caption: 'Kept', imageUrl: keptImage.imageUrl }],
+          },
+        ],
+      });
+
+      expect(resp.status).toBe(200);
+      expect((await imageRowsFor(draft.id)).map((row) => String(row.id))).toEqual([keptImage.id]);
+      expect(DeleteObjectCommand).toHaveBeenCalledTimes(1);
+      expect(DeleteObjectCommand.mock.calls[0][0].Key).toBe(
+        `stress-less-glass-blog-images/${droppedPublicId}`,
+      );
+      const { rows } = await pool.query('SELECT blocks FROM blog_posts WHERE id = $1', [draft.id]);
+      expect(rows[0].blocks[0].images).toEqual([{ imageId: keptImage.id, caption: 'Kept' }]);
+    });
+
+    it('returns image URLs in block order on the public post and the cover on the list', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      const [firstImage, secondImage, thirdImage] = (
+        await uploadImages(agent, draft.id, ['one.jpg', 'two.jpg', 'three.jpg'])
+      ).body;
+      const blocks = [
+        { id: 'block-a', type: 'text', body: 'Trailhead.' },
+        {
+          id: 'block-b',
+          type: 'images',
+          images: [
+            { imageId: thirdImage.id, caption: 'Summit' },
+            { imageId: firstImage.id, caption: '' },
+          ],
+        },
+        { id: 'block-c', type: 'images', images: [{ imageId: secondImage.id, caption: 'Camp' }] },
+      ];
+      await agent
+        .put(`/api/v1/admin/blog/${draft.id}`)
+        .send({ title: 'Ridge Hike', category: 'Hiking', blocks });
+      await agent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
+
+      const postResp = await request(app).get('/api/v1/blog/ridge-hike');
+      const listResp = await request(app).get('/api/v1/blog');
+
+      expect(postResp.body.blocks[1].images).toEqual([
+        { imageId: thirdImage.id, caption: 'Summit', imageUrl: thirdImage.imageUrl },
+        { imageId: firstImage.id, caption: '', imageUrl: firstImage.imageUrl },
+      ]);
+      expect(postResp.body.blocks[2].images).toEqual([
+        { imageId: secondImage.id, caption: 'Camp', imageUrl: secondImage.imageUrl },
+      ]);
+      expect(listResp.body[0].coverImageUrl).toBe(thirdImage.imageUrl);
     });
   });
 });
