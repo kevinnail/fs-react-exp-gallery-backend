@@ -590,4 +590,78 @@ describe('admin blog routes', () => {
       expect(listResp.body[0].coverImageUrl).toBe(thirdImage.imageUrl);
     });
   });
+
+  describe('DELETE /api/v1/admin/blog/:id', () => {
+    const createPublishedPostWithImages = async (agent) => {
+      const created = await agent
+        .post('/api/v1/admin/blog')
+        .send({ title: 'Ridge Hike', category: 'Hiking' });
+      const uploaded = await agent
+        .post(`/api/v1/admin/blog/${created.body.id}/images`)
+        .attach('imageFiles', Buffer.from('a'), { filename: 'one.jpg', contentType: 'image/jpeg' })
+        .attach('imageFiles', Buffer.from('b'), { filename: 'two.jpg', contentType: 'image/jpeg' });
+      await agent.put(`/api/v1/admin/blog/${created.body.id}`).send({
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        blocks: [
+          {
+            id: 'block-a',
+            type: 'images',
+            images: uploaded.body.map((image) => ({ imageId: image.id, caption: '' })),
+          },
+        ],
+      });
+      await agent.patch(`/api/v1/admin/blog/${created.body.id}/publish`);
+      return created.body;
+    };
+
+    it('deletes the post, its image rows and each image S3 object', async () => {
+      const [agent] = await registerAndLogin();
+      const post = await createPublishedPostWithImages(agent);
+      const { rows: imageRows } = await pool.query(
+        'SELECT public_id FROM blog_images WHERE post_id = $1 ORDER BY id',
+        [post.id],
+      );
+      jest.clearAllMocks();
+
+      const resp = await agent.delete(`/api/v1/admin/blog/${post.id}`);
+
+      expect(resp.status).toBe(200);
+      expect(resp.body.id).toBe(post.id);
+      expect(await blogRowCount()).toBe(0);
+      const { rows: remainingImages } = await pool.query(
+        'SELECT id FROM blog_images WHERE post_id = $1',
+        [post.id],
+      );
+      expect(remainingImages).toEqual([]);
+      expect(DeleteObjectCommand.mock.calls.map(([command]) => command.Key).sort()).toEqual(
+        imageRows.map((row) => `stress-less-glass-blog-images/${row.public_id}`).sort(),
+      );
+      expect((await request(app).get('/api/v1/blog/ridge-hike')).status).toBe(404);
+      expect((await request(app).get('/api/v1/blog')).body).toEqual([]);
+    });
+
+    it('returns 404 for an unknown id', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await agent.delete('/api/v1/admin/blog/999999');
+
+      expect(resp.status).toBe(404);
+      expect(DeleteObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 for a customer and leaves the post and its images in place', async () => {
+      const [adminAgent] = await registerAndLogin();
+      const post = await createPublishedPostWithImages(adminAgent);
+      const [customerAgent] = await registerAndLogin({ email: 'customer@example.com' });
+      jest.clearAllMocks();
+
+      const resp = await customerAgent.delete(`/api/v1/admin/blog/${post.id}`);
+
+      expect(resp.status).toBe(403);
+      expect(await blogRowCount()).toBe(1);
+      expect(DeleteObjectCommand).not.toHaveBeenCalled();
+      expect((await request(app).get('/api/v1/blog/ridge-hike')).status).toBe(200);
+    });
+  });
 });
