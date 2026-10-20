@@ -14,6 +14,9 @@ jest.mock('@aws-sdk/client-s3', () => {
 });
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
+// This file sends more than the test limiter's 150 requests a minute; rate-limit.test.js covers the limiter.
+jest.mock('express-rate-limit', () => () => (req, res, next) => next());
+
 // test@example.com is configured as an admin (in ALLOWED_EMAILS) for the test env
 const adminUser = { email: 'test@example.com', password: 'Test1234!' };
 
@@ -55,6 +58,8 @@ describe('admin blog routes', () => {
         slug: 'sunrise-on-the-ridge',
         title: 'Sunrise on the Ridge!',
         category: 'hiking',
+        summary: '',
+        coverImageUrl: null,
         blocks: [],
         publishedAt: null,
         createdAt: expect.any(String),
