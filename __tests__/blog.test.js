@@ -302,6 +302,19 @@ describe('admin blog routes', () => {
       expect(putResp.status).toBe(404);
     });
 
+    it('returns 404 for an unknown id even when the blocks reference images', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await agent.put('/api/v1/admin/blog/999999').send({
+        title: 'Ghost',
+        category: 'General',
+        blocks: [{ id: 'block-a', type: 'images', images: [{ imageId: '1', caption: '' }] }],
+      });
+
+      expect(resp.status).toBe(404);
+      expect(resp.body.message).toBe('Blog post not found');
+    });
+
     it('returns 403 for a customer PUT and leaves the row unchanged', async () => {
       const [adminAgent] = await registerAndLogin();
       const draft = await createDraft(adminAgent);
@@ -322,6 +335,7 @@ describe('admin blog routes', () => {
       await agent.put(`/api/v1/admin/blog/${created.body.id}`).send({
         title,
         category,
+        summary: 'Two days out and back.',
         blocks: [{ id: 'block-a', type: 'text', body }],
       });
       return created.body;
@@ -352,9 +366,9 @@ describe('admin blog routes', () => {
           slug: 'ridge-hike',
           title: 'Ridge Hike',
           category: 'Hiking',
-          publishedAt: publishResp.body.publishedAt,
+          summary: 'Two days out and back.',
           coverImageUrl: null,
-          excerpt: 'We hit the ridge at sunrise.',
+          publishedAt: publishResp.body.publishedAt,
         },
       ]);
 
@@ -554,7 +568,7 @@ describe('admin blog routes', () => {
       expect(rows[0].blocks[0].images).toEqual([{ imageId: keptImage.id, caption: 'Kept' }]);
     });
 
-    it('returns image URLs in block order on the public post and the cover on the list', async () => {
+    it('returns image URLs in block order on the public post', async () => {
       const [agent] = await registerAndLogin();
       const draft = await createDraft(agent);
       const [firstImage, secondImage, thirdImage] = (
@@ -578,7 +592,6 @@ describe('admin blog routes', () => {
       await agent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
 
       const postResp = await request(app).get('/api/v1/blog/ridge-hike');
-      const listResp = await request(app).get('/api/v1/blog');
 
       expect(postResp.body.blocks[1].images).toEqual([
         { imageId: thirdImage.id, caption: 'Summit', imageUrl: thirdImage.imageUrl },
@@ -587,7 +600,185 @@ describe('admin blog routes', () => {
       expect(postResp.body.blocks[2].images).toEqual([
         { imageId: secondImage.id, caption: 'Camp', imageUrl: secondImage.imageUrl },
       ]);
-      expect(listResp.body[0].coverImageUrl).toBe(thirdImage.imageUrl);
+    });
+  });
+
+  describe('blog cover picture and summary', () => {
+    const createDraft = async (agent) => {
+      const resp = await agent
+        .post('/api/v1/admin/blog')
+        .send({ title: 'Ridge Hike', category: 'Hiking' });
+      return resp.body;
+    };
+
+    const setCover = (agent, postId, fileName = 'cover.jpg') =>
+      agent
+        .put(`/api/v1/admin/blog/${postId}/cover`)
+        .attach('imageFile', Buffer.from('cover bytes'), {
+          filename: fileName,
+          contentType: 'image/jpeg',
+        });
+
+    const coverColumns = async (postId) => {
+      const { rows } = await pool.query(
+        'SELECT cover_image_url, cover_public_id FROM blog_posts WHERE id = $1',
+        [postId],
+      );
+      return rows[0];
+    };
+
+    it('stores the cover on the post and uploads it to S3 under the blog prefix', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+
+      const resp = await setCover(agent, draft.id);
+
+      expect(resp.status).toBe(200);
+      expect(PutObjectCommand).toHaveBeenCalledTimes(1);
+      const key = PutObjectCommand.mock.calls[0][0].Key;
+      expect(key.startsWith('stress-less-glass-blog-images/')).toBe(true);
+      expect(resp.body.coverImageUrl.endsWith(key)).toBe(true);
+      const stored = await coverColumns(draft.id);
+      expect(stored.cover_image_url).toBe(resp.body.coverImageUrl);
+      const getResp = await agent.get(`/api/v1/admin/blog/${draft.id}`);
+      expect(getResp.body.coverImageUrl).toBe(resp.body.coverImageUrl);
+    });
+
+    it('replaces the cover and deletes the previous S3 object', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      await setCover(agent, draft.id, 'first.jpg');
+      const first = await coverColumns(draft.id);
+
+      const resp = await setCover(agent, draft.id, 'second.jpg');
+
+      expect(resp.status).toBe(200);
+      const stored = await coverColumns(draft.id);
+      expect(stored.cover_image_url).toContain('second.jpg');
+      expect(DeleteObjectCommand).toHaveBeenCalledTimes(1);
+      expect(DeleteObjectCommand.mock.calls[0][0].Key).toBe(
+        `stress-less-glass-blog-images/${first.cover_public_id}`,
+      );
+    });
+
+    it('returns 400 when no file is sent', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+
+      const resp = await agent.put(`/api/v1/admin/blog/${draft.id}/cover`);
+
+      expect(resp.status).toBe(400);
+      expect(PutObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 for an unknown post and uploads nothing', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await setCover(agent, '999999');
+
+      expect(resp.status).toBe(404);
+      expect(PutObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 for a customer and leaves the cover alone', async () => {
+      const [adminAgent] = await registerAndLogin();
+      const draft = await createDraft(adminAgent);
+      await setCover(adminAgent, draft.id);
+      const [customerAgent] = await registerAndLogin({ email: 'customer@example.com' });
+      jest.clearAllMocks();
+
+      const replaceResp = await setCover(customerAgent, draft.id, 'other.jpg');
+      const removeResp = await customerAgent.delete(`/api/v1/admin/blog/${draft.id}/cover`);
+
+      expect(replaceResp.status).toBe(403);
+      expect(removeResp.status).toBe(403);
+      expect(PutObjectCommand).not.toHaveBeenCalled();
+      expect(DeleteObjectCommand).not.toHaveBeenCalled();
+      expect((await coverColumns(draft.id)).cover_image_url).toContain('cover.jpg');
+    });
+
+    it('removes the cover and deletes its S3 object', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      await setCover(agent, draft.id);
+      const { cover_public_id: coverPublicId } = await coverColumns(draft.id);
+
+      const resp = await agent.delete(`/api/v1/admin/blog/${draft.id}/cover`);
+
+      expect(resp.status).toBe(200);
+      expect(await coverColumns(draft.id)).toEqual({
+        cover_image_url: null,
+        cover_public_id: null,
+      });
+      expect(DeleteObjectCommand).toHaveBeenCalledTimes(1);
+      expect(DeleteObjectCommand.mock.calls[0][0].Key).toBe(
+        `stress-less-glass-blog-images/${coverPublicId}`,
+      );
+    });
+
+    it('returns 404 when removing the cover of an unknown post', async () => {
+      const [agent] = await registerAndLogin();
+
+      const resp = await agent.delete('/api/v1/admin/blog/999999/cover');
+
+      expect(resp.status).toBe(404);
+      expect(DeleteObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('keeps the cover when the post is saved and saves the summary trimmed', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      await setCover(agent, draft.id);
+
+      const putResp = await agent.put(`/api/v1/admin/blog/${draft.id}`).send({
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        summary: '  Three days to Table Lake.  ',
+        blocks: [],
+      });
+
+      expect(putResp.status).toBe(200);
+      const getResp = await agent.get(`/api/v1/admin/blog/${draft.id}`);
+      expect(getResp.body.summary).toBe('Three days to Table Lake.');
+      expect(getResp.body.coverImageUrl).toContain('cover.jpg');
+      expect(DeleteObjectCommand).not.toHaveBeenCalled();
+    });
+
+    it('returns the summary and cover on the public list', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      const coverResp = await setCover(agent, draft.id);
+      await agent.put(`/api/v1/admin/blog/${draft.id}`).send({
+        title: 'Ridge Hike',
+        category: 'Hiking',
+        summary: 'Three days to Table Lake.',
+        blocks: [],
+      });
+      await agent.patch(`/api/v1/admin/blog/${draft.id}/publish`);
+
+      const resp = await request(app).get('/api/v1/blog');
+
+      expect(resp.body[0]).toEqual(
+        expect.objectContaining({
+          summary: 'Three days to Table Lake.',
+          coverImageUrl: coverResp.body.coverImageUrl,
+        }),
+      );
+    });
+
+    it('deletes the cover S3 object when the post is deleted', async () => {
+      const [agent] = await registerAndLogin();
+      const draft = await createDraft(agent);
+      await setCover(agent, draft.id);
+      const { cover_public_id: coverPublicId } = await coverColumns(draft.id);
+      jest.clearAllMocks();
+
+      const resp = await agent.delete(`/api/v1/admin/blog/${draft.id}`);
+
+      expect(resp.status).toBe(200);
+      expect(DeleteObjectCommand.mock.calls.map(([command]) => command.Key)).toEqual([
+        `stress-less-glass-blog-images/${coverPublicId}`,
+      ]);
     });
   });
 
