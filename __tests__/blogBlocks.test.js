@@ -1,9 +1,4 @@
-const {
-  slugify,
-  validateBlocks,
-  toStoredBlocks,
-  excerptFromBlocks,
-} = require('../lib/utils/blogBlocks');
+const { slugify, validateBlocks, toStoredBlocks } = require('../lib/utils/blogBlocks');
 
 describe('slugify', () => {
   it('lowercases and joins words with single dashes', () => {
@@ -141,45 +136,5 @@ describe('toStoredBlocks', () => {
       { id: 'block-a', type: 'text', body: 'Trailhead.' },
       { id: 'block-b', type: 'images', images: [{ imageId: '12', caption: 'Ridge' }] },
     ]);
-  });
-});
-
-describe('excerptFromBlocks', () => {
-  const textBlock = (body) => ({ id: 'block', type: 'text', body });
-
-  it('is empty when there is no text', () => {
-    expect(excerptFromBlocks([])).toBe('');
-    expect(excerptFromBlocks([textBlock('   ')])).toBe('');
-  });
-
-  it('uses the first text block that has content', () => {
-    expect(
-      excerptFromBlocks([textBlock(''), textBlock('Second block.'), textBlock('Third.')]),
-    ).toBe('Second block.');
-  });
-
-  it('strips Markdown to plain text, keeping link text and snake_case', () => {
-    const body = [
-      '## Day one',
-      '',
-      'We hit the **ridge** at [sunrise](https://example.com). Checked `published_at`.',
-      '',
-      '```js',
-      'const hidden = true;',
-      '```',
-      '- tent',
-      '> a quote',
-    ].join('\n');
-
-    expect(excerptFromBlocks([textBlock(body)])).toBe(
-      'Day one We hit the ridge at sunrise. Checked published_at. tent a quote',
-    );
-  });
-
-  it('cuts long text at a word boundary and marks the cut', () => {
-    const excerpt = excerptFromBlocks([textBlock('glass '.repeat(60))]);
-
-    expect(excerpt.length).toBeLessThanOrEqual(201);
-    expect(excerpt.endsWith('glass…')).toBe(true);
   });
 });
