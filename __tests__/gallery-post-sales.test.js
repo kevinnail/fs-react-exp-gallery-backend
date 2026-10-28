@@ -269,6 +269,8 @@ describe('Sales order routes', () => {
           post_id: SEEDED_POST_IDS[0],
           price: '10.00',
           post_title: 'Test 1',
+          post_category: 'Test 1',
+          post_description: 'Test 1',
         }),
       );
     });
