@@ -14,6 +14,8 @@ DROP TABLE IF EXISTS gallery_post_sales CASCADE;
 DROP TABLE IF EXISTS sales_orders CASCADE;
 DROP TABLE IF EXISTS error_logs CASCADE;
 DROP TABLE IF EXISTS daily_metric_snapshots CASCADE;
+DROP TABLE IF EXISTS chart_chat_messages CASCADE;
+DROP TABLE IF EXISTS chart_chats CASCADE;
 
 CREATE TABLE users_admin (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -191,6 +193,25 @@ CREATE TABLE daily_metric_snapshots (
   inventory_for_sale_value NUMERIC(10,2) NOT NULL,
   hidden_post_count INTEGER NOT NULL
 );
+
+CREATE TABLE chart_chats (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title VARCHAR(120) NOT NULL,
+  granularity VARCHAR(10) NOT NULL CHECK (granularity IN ('day', 'week', 'month')),
+  range VARCHAR(10) NOT NULL CHECK (range IN ('3m', '6m', '12m', 'all')),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE chart_chat_messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  chat_id BIGINT NOT NULL REFERENCES chart_chats(id) ON DELETE CASCADE,
+  role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX chart_chat_messages_chat_id_idx ON chart_chat_messages (chat_id, id);
 
 INSERT INTO gallery_posts (created_at, title, description, image_url, category, price, author_id, public_id, num_imgs)
 VALUES 
