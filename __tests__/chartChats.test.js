@@ -7,6 +7,7 @@ const Profile = require('../lib/models/Profile');
 
 // OpenAI is a paid third party; only the persistence around it is under test.
 jest.mock('../lib/services/chartChat.js', () => ({
+  ...jest.requireActual('../lib/services/chartChat.js'),
   askAboutCharts: jest.fn(),
 }));
 const { askAboutCharts } = require('../lib/services/chartChat.js');
@@ -304,6 +305,237 @@ describe('/api/v1/admin/chart-chats', () => {
       expect(res.status).toBe(400);
       expect(res.body.message).toBe('day granularity needs a range of 12 months or less');
       expect(await storedMessages()).toHaveLength(2);
+    });
+  });
+
+  describe('GET /api/v1/admin/chart-chat-summary', () => {
+    // Otherwise the chat tab shows numbers that differ from what the model was told.
+    it('returns the same per-metric summaries written into the model instructions', async () => {
+      const agent = await loginAs(adminCredentials);
+      const { askAboutCharts: realAskAboutCharts } = jest.requireActual(
+        '../lib/services/chartChat.js',
+      );
+      const originalApiKey = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = 'test-key';
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output: [{ type: 'message', content: [{ type: 'output_text', text: 'Reply' }] }],
+        }),
+      });
+
+      const res = await agent.get('/api/v1/admin/chart-chat-summary?granularity=week&range=6m');
+      await realAskAboutCharts({
+        granularity: 'week',
+        range: '6m',
+        messages: [{ role: 'user', content: 'Question' }],
+      });
+
+      const { instructions } = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      process.env.OPENAI_API_KEY = originalApiKey;
+      jest.restoreAllMocks();
+
+      expect(res.status).toBe(200);
+      expect(res.body[0]).toEqual({
+        meaning: 'gallery plus auction revenue',
+        metric: 'totalRevenue',
+        completePeriods: expect.any(Object),
+        trend: expect.anything(),
+        currentPeriodSoFar: { period: expect.any(String), value: expect.any(String) },
+      });
+      for (const { meaning, ...summary } of res.body) {
+        expect(instructions).toContain(`- ${summary.metric}: ${meaning}`);
+        expect(instructions).toContain(JSON.stringify(summary));
+      }
+    });
+
+    // Otherwise a bad period reaches the chart query instead of returning a readable error.
+    it('returns 400 for a day chart over all time', async () => {
+      const agent = await loginAs(adminCredentials);
+
+      const res = await agent.get('/api/v1/admin/chart-chat-summary?granularity=day&range=all');
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('day granularity needs a range of 12 months or less');
+    });
+
+    // Otherwise a customer could read the admin's business numbers.
+    it('returns 403 for a signed-in customer', async () => {
+      const agent = await loginAs(customerCredentials);
+
+      const res = await agent.get('/api/v1/admin/chart-chat-summary?granularity=week&range=6m');
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('GET /', () => {
+    const createChat = async (agent, content) => {
+      askAboutCharts.mockResolvedValueOnce('Reply');
+      const created = await agent
+        .post('/api/v1/admin/chart-chats')
+        .send({ granularity: 'week', range: '6m', content });
+      return created.body;
+    };
+
+    // Otherwise the chat Kevin just used sinks below older ones in the saved chats list.
+    it('lists chats with the most recently active first, without their messages', async () => {
+      const agent = await loginAs(adminCredentials);
+      const olderChat = await createChat(agent, 'Older question');
+      const newerChat = await createChat(agent, 'Newer question');
+      askAboutCharts.mockResolvedValueOnce('Follow-up reply');
+      await agent
+        .post(`/api/v1/admin/chart-chats/${olderChat.id}/messages`)
+        .send({ granularity: 'month', range: '12m', content: 'Follow-up' });
+
+      const res = await agent.get('/api/v1/admin/chart-chats');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([
+        {
+          id: olderChat.id,
+          title: 'Older question',
+          granularity: 'month',
+          range: '12m',
+          updatedAt: expect.any(String),
+        },
+        {
+          id: newerChat.id,
+          title: 'Newer question',
+          granularity: 'week',
+          range: '6m',
+          updatedAt: expect.any(String),
+        },
+      ]);
+    });
+
+    // Otherwise the list route falls through to the gallery post route and breaks the page with no chats.
+    it('returns an empty list when there are no chats', async () => {
+      const agent = await loginAs(adminCredentials);
+
+      const res = await agent.get('/api/v1/admin/chart-chats');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([]);
+    });
+
+    // Otherwise a customer could read the admin's business questions.
+    it('returns 403 for a signed-in customer', async () => {
+      const agent = await loginAs(customerCredentials);
+
+      const res = await agent.get('/api/v1/admin/chart-chats');
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('PATCH /:id', () => {
+    const createChat = async (agent) => {
+      askAboutCharts.mockResolvedValueOnce('Reply');
+      const created = await agent
+        .post('/api/v1/admin/chart-chats')
+        .send({ granularity: 'week', range: '6m', content: 'Original question' });
+      return created.body;
+    };
+
+    // Otherwise a rename shows in the list but is gone after a refresh.
+    it('saves the trimmed title and returns the chat summary', async () => {
+      const agent = await loginAs(adminCredentials);
+      const chat = await createChat(agent);
+
+      const res = await agent
+        .patch(`/api/v1/admin/chart-chats/${chat.id}`)
+        .send({ title: '  Spring revenue  ' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        id: chat.id,
+        title: 'Spring revenue',
+        granularity: 'week',
+        range: '6m',
+        updatedAt: expect.any(String),
+      });
+      expect(await storedChats()).toEqual([
+        { id: chat.id, title: 'Spring revenue', granularity: 'week', range: '6m' },
+      ]);
+    });
+
+    // Otherwise a cleared rename box leaves a chat with no visible title to click.
+    it('returns 400 for a blank title and keeps the old one', async () => {
+      const agent = await loginAs(adminCredentials);
+      const chat = await createChat(agent);
+
+      const res = await agent.patch(`/api/v1/admin/chart-chats/${chat.id}`).send({ title: '   ' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('title must be a non-empty string');
+      expect((await storedChats())[0].title).toBe('Original question');
+    });
+
+    // Otherwise a long title reaches Postgres and comes back as a 500 instead of a readable error.
+    it('returns 400 for a title over 120 characters', async () => {
+      const agent = await loginAs(adminCredentials);
+      const chat = await createChat(agent);
+
+      const res = await agent
+        .patch(`/api/v1/admin/chart-chats/${chat.id}`)
+        .send({ title: 'a'.repeat(121) });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('title must be 120 characters or less');
+      expect((await storedChats())[0].title).toBe('Original question');
+    });
+
+    // Otherwise renaming a chat deleted in another tab reports success.
+    it('returns 404 for a chat that does not exist', async () => {
+      const agent = await loginAs(adminCredentials);
+
+      const res = await agent.patch('/api/v1/admin/chart-chats/9999').send({ title: 'New title' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.message).toBe('Chat not found');
+    });
+  });
+
+  describe('DELETE /:id', () => {
+    // Otherwise deleted chats leave their messages behind in the database.
+    it('deletes the chat and its messages', async () => {
+      const agent = await loginAs(adminCredentials);
+      askAboutCharts.mockResolvedValueOnce('Reply');
+      const created = await agent
+        .post('/api/v1/admin/chart-chats')
+        .send({ granularity: 'week', range: '6m', content: 'Question' });
+
+      const res = await agent.delete(`/api/v1/admin/chart-chats/${created.body.id}`);
+
+      expect(res.status).toBe(204);
+      expect(await storedChats()).toEqual([]);
+      expect(await storedMessages()).toEqual([]);
+    });
+
+    // Otherwise deleting a chat that is already gone reports success.
+    it('returns 404 for a chat that does not exist', async () => {
+      const agent = await loginAs(adminCredentials);
+
+      const res = await agent.delete('/api/v1/admin/chart-chats/9999');
+
+      expect(res.status).toBe(404);
+      expect(res.body.message).toBe('Chat not found');
+    });
+
+    // Otherwise a customer could wipe the admin's saved chats.
+    it('returns 403 for a signed-in customer and keeps the chat', async () => {
+      const adminAgent = await loginAs(adminCredentials);
+      askAboutCharts.mockResolvedValueOnce('Reply');
+      const created = await adminAgent
+        .post('/api/v1/admin/chart-chats')
+        .send({ granularity: 'week', range: '6m', content: 'Question' });
+      const customerAgent = await loginAs(customerCredentials);
+
+      const res = await customerAgent.delete(`/api/v1/admin/chart-chats/${created.body.id}`);
+
+      expect(res.status).toBe(403);
+      expect(await storedChats()).toHaveLength(1);
     });
   });
 });
